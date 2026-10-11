@@ -34,8 +34,8 @@ jobs:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
-          M2_MINUTES: "3"
-          M2_CLIPS: "all"        # every picture becomes a 5-s AI clip (or a number, e.g. "10")
+          M2_MINUTES: "1"
+          M2_CLIPS: "4"        # every picture becomes a 5-s AI clip (or a number, e.g. "10")
           STUDIO_UPLOAD: schedule
           STUDIO_TIMES: "18:00"
         run: python cloud_daily.py
