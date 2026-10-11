@@ -101,7 +101,7 @@ def kaggle_cli(*args, check=False):
 
 def kaggle_clips(P, st, pages):
     user = os.getenv("KAGGLE_USERNAME")
-    if not user or not os.getenv("KAGGLE_KEY"): say("no Kaggle keys -> video without AI clips"); return 0
+    if not user or not (os.getenv("KAGGLE_KEY") or os.getenv("KAGGLE_API_TOKEN")): say("no Kaggle keys -> video without AI clips"); return 0
     ds_id, k_id = f"{user}/m2-clips-job", f"{user}/m2-clips"
     jd = "/tmp/m2_job"; shutil.rmtree(jd, ignore_errors=True); os.makedirs(jd)
     prompts = {}
