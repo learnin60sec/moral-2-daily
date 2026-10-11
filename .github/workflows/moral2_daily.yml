@@ -8,7 +8,7 @@ permissions:
 jobs:
   video:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,8 +34,13 @@ jobs:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
-          M2_MINUTES: "1"
-          M2_CLIPS: "4"        # every picture becomes a 5-s AI clip (or a number, e.g. "10")
+          KAGGLE2_USERNAME: ${{ secrets.KAGGLE2_USERNAME }}
+          KAGGLE2_KEY: ${{ secrets.KAGGLE2_KEY }}
+          KAGGLE2_API_TOKEN: ${{ secrets.KAGGLE2_API_TOKEN }}
+          M2_MINUTES: "3"
+          M2_SECONDS_PER_PICTURE: "6"     # 3 min = ~30 clips, shared by 2 Kaggle accounts
+          M2_KAGGLE_MINUTES: "300"
+          M2_CLIPS: "all"                # every picture becomes a Wan 2.2 14B clip
           STUDIO_UPLOAD: schedule
           STUDIO_TIMES: "18:00"
         run: python cloud_daily.py
