@@ -1004,6 +1004,7 @@ def make_music(path, seconds, tone="happy", sr=24000):
 def pick_music(P, seconds, tone):
     """an mp3 from the music folder (mood word in the name preferred), otherwise our own music"""
     md = os.path.join(HERE, "music"); files = sorted(glob.glob(os.path.join(md, "*.mp3")) + glob.glob(os.path.join(md, "*.wav")))
+    if not files: files = sorted(glob.glob(os.path.join(HERE, "*.mp3")))          # flat GitHub repo: music next to m2.py
     if files:
         words = {"happy": ("happy", "joy", "bright", "khush"), "sad": ("sad", "emotional", "slow", "dukh"), "serious": ("calm", "soft", "serious")}[tone]
         good = [f for f in files if any(w in os.path.basename(f).lower() for w in words)] or files

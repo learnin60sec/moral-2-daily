@@ -5,7 +5,9 @@ CLOUD DAILY - runs on GitHub every day, laptop can stay OFF.
 Settings (env): M2_MINUTES 3 | M2_SECONDS_PER_PICTURE 5 | M2_CLIPS 10 | M2_KAGGLE_MINUTES 240 | M2_AUTO_UPLOAD 1
 """
 import os, sys, json, time, glob, shutil, base64, io, subprocess, re
-HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, HERE)
+_ME = os.path.dirname(os.path.abspath(__file__))
+HERE = _ME if os.path.exists(os.path.join(_ME, "m2.py")) else os.path.dirname(_ME)   # flat repo or the moral_2 folder
+sys.path.insert(0, HERE)
 os.environ.setdefault("M2_SECONDS_PER_PICTURE", "5"); os.environ.setdefault("STUDIO_UNATTENDED", "1")
 import requests
 import studio as S, m2
@@ -115,7 +117,9 @@ def kaggle_clips(P, st, pages):
         if "ready" in kaggle_cli("datasets", "status", ds_id).stdout.lower(): break
         time.sleep(20)
     kd = "/tmp/m2_kernel"; shutil.rmtree(kd, ignore_errors=True); os.makedirs(kd)
-    shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "kaggle_job", "kernel.py"), kd)
+    kern = [k_ for k_ in (os.path.join(_ME, "kaggle_job", "kernel.py"), os.path.join(_ME, "kernel.py"), os.path.join(HERE, "kernel.py")) if os.path.exists(k_)]
+    if not kern: raise RuntimeError("kernel.py not found next to cloud_daily.py")
+    shutil.copy(kern[0], os.path.join(kd, "kernel.py"))
     json.dump({"id": k_id, "title": "m2-clips", "code_file": "kernel.py", "language": "python", "kernel_type": "script", "is_private": True,
                "enable_gpu": True, "enable_internet": True, "dataset_sources": [ds_id], "competition_sources": [], "kernel_sources": []},
               open(os.path.join(kd, "kernel-metadata.json"), "w"))
