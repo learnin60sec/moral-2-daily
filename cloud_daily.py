@@ -69,77 +69,128 @@ def key_pages(P, st, k):
 
 
 def ai_prompt(pic, moment):
-    key = os.getenv("GROQ_API_KEY")
+    """the AI LOOKS at the picture and writes the Wan 2.2 prompt: Groq vision first, Gemini vision second, story text last"""
     STYLE = " Premium 2D cartoon style, the same characters with exactly the same faces, clothes and colours."
-    fallback = (moment + ". " if moment else "") + "Small natural calm movements, gentle wind in the trees, slow steady camera. Nothing new appears." + STYLE
-    if not key: return fallback
+    fallback = (moment.rstrip(". ") + ". " if moment else "") + ("The characters make small natural movements, gentle wind moves the grass, "
+                "static camera, nothing enters the frame from the edges, nothing covers any face." + STYLE)
     from PIL import Image
     im = Image.open(pic).convert("RGB"); im.thumbnail((768, 768)); b = io.BytesIO(); im.save(b, "JPEG", quality=85)
-    ask = ("You write prompts for the Wan 2.2 image-to-video model. Look at this 2D cartoon picture (the FIRST frame of a 5-second clip). "
-           "Write ONE English prompt of 60-90 words: name what is in the picture (people, animals, objects, place, light) and give each "
-           "of them a small, natural, calm movement that fits the picture" + (f" and this story moment: {moment}" if moment else "") + ". "
-           "Camera: static or a very slow push-in. Keep every face, body and clothes exactly the same. Nothing new appears, nothing "
-           "flies or passes in front of the camera, nobody turns into something else. Return only the prompt text.")
-    try:
-        r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {key}"}, timeout=60,
-                          json={"model": "meta-llama/llama-4-scout-17b-16e-instruct", "temperature": 0.3, "messages": [{"role": "user", "content": [
-                              {"type": "text", "text": ask}, {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode()}}]}]})
-        if r.status_code == 200:
-            t = r.json()["choices"][0]["message"]["content"].strip().strip('"')
-            if 30 < len(t) < 1500: return t + STYLE
-    except Exception:
-        pass
-    return fallback
-
+    img64 = base64.b64encode(b.getvalue()).decode()
+    ask = ("You write prompts for the Wan 2.2 image-to-video model. Look at this 2D cartoon picture; it is the FIRST frame of a 5-second clip. "
+           "Write ONE English prompt of 50-80 words in this order: (1) the main character and ONE clear action that fits the picture"
+           + (f" and this story moment: '{moment}'" if moment else "") + "; (2) one small movement for each other person or animal; "
+           "(3) one gentle background movement (grass, clouds, smoke or water). Then end with exactly: 'Static camera. Nothing enters the frame "
+           "from the edges. No leaves or branches cover any face. Same faces and clothes.' Do not invent people, animals or objects that are "
+           "not in the picture. Return only the prompt.")
+    why = []
+    gk = os.getenv("GROQ_API_KEY")
+    if gk:
+        for model in ("meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"):
+            try:
+                r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {gk}"}, timeout=60,
+                                  json={"model": model, "temperature": 0.3, "messages": [{"role": "user", "content": [
+                                      {"type": "text", "text": ask}, {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + img64}}]}]})
+                if r.status_code == 200:
+                    t = r.json()["choices"][0]["message"]["content"].strip().strip('"')
+                    if 30 < len(t) < 1500: return t + STYLE, "Groq"
+                why.append(f"Groq {model.split('/')[-1][:20]} {r.status_code}: {r.text[:90]}")
+            except Exception as e:
+                why.append(f"Groq {str(e)[:80]}")
+    key = os.getenv("GEMINI_API_KEY")
+    if key:
+        for model in ("gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest"):
+            try:
+                r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", headers={"x-goog-api-key": key}, timeout=60,
+                                  json={"contents": [{"parts": [{"text": ask}, {"inline_data": {"mime_type": "image/jpeg", "data": img64}}]}]})
+                if r.status_code == 200:
+                    t = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip().strip('"')
+                    if 30 < len(t) < 1500: return t + STYLE, "Gemini"
+                why.append(f"Gemini {model} {r.status_code}: {r.text[:90]}")
+            except Exception as e:
+                why.append(f"Gemini {str(e)[:80]}")
+    say("   (AI could not look at the picture: " + " | ".join(why)[:300] + ")")
+    return fallback, "story text"
 
 # ---------------------------------------------------------------- 4) Kaggle job
-def kaggle_cli(*args, check=False):
-    r = subprocess.run(["kaggle"] + list(args), capture_output=True, text=True)
+def kaggle_accounts():
+    """account 1 = KAGGLE_*, account 2 = KAGGLE2_* (each: username + key or api token)"""
+    out = []
+    for pre in ("KAGGLE", "KAGGLE2"):
+        u, k, t = os.getenv(f"{pre}_USERNAME"), os.getenv(f"{pre}_KEY"), os.getenv(f"{pre}_API_TOKEN")
+        if u and (k or t): out.append({"user": u, "key": k, "token": t, "name": pre})
+    return out
+
+
+def kaggle_cli(*args, acc=None, check=False):
+    env = {k: v for k, v in os.environ.items() if not k.startswith("KAGGLE")}
+    if acc:
+        cfg = f"/tmp/kcfg_{acc['name']}"; os.makedirs(cfg, exist_ok=True)
+        env.update({"KAGGLE_USERNAME": acc["user"], "KAGGLE_CONFIG_DIR": cfg})
+        if acc["key"]: env["KAGGLE_KEY"] = acc["key"]
+        if acc["token"]: env["KAGGLE_API_TOKEN"] = acc["token"]
+    r = subprocess.run(["kaggle"] + list(args), capture_output=True, text=True, env=env)
     if check and r.returncode != 0: raise RuntimeError(f"kaggle {' '.join(args)}: {r.stdout[-300:]} {r.stderr[-300:]}")
     return r
 
 
-def kaggle_clips(P, st, pages):
-    user = os.getenv("KAGGLE_USERNAME")
-    if not user or not (os.getenv("KAGGLE_KEY") or os.getenv("KAGGLE_API_TOKEN")): say("no Kaggle keys -> video without AI clips"); return 0
-    ds_id, k_id = f"{user}/m2-clips-job", f"{user}/m2-clips"
-    jd = "/tmp/m2_job"; shutil.rmtree(jd, ignore_errors=True); os.makedirs(jd)
-    prompts = {}
-    for i in pages:
-        name = f"{i:03d}.png"; src = P.p(m2.pics_dir(P), name); shutil.copy(src, os.path.join(jd, name))
-        prompts[name] = ai_prompt(src, st["pictures"][i - 1].get("action", ""))
-        say(f"   prompt {name}: {prompts[name][:90]}...")
-    json.dump({"pictures": sorted(prompts), "prompts": prompts, "seconds": 5}, open(os.path.join(jd, "job.json"), "w"))
+def start_job(acc, P, names, prompts, tag):
+    """upload the pictures + prompts as this account's dataset and start its Kaggle job"""
+    ds_id, k_id = f"{acc['user']}/m2-clips-job", f"{acc['user']}/m2-clips"
+    jd = f"/tmp/m2_job_{tag}"; shutil.rmtree(jd, ignore_errors=True); os.makedirs(jd)
+    for n in names: shutil.copy(P.p(m2.pics_dir(P), n), os.path.join(jd, n))
+    json.dump({"pictures": names, "prompts": {n: prompts[n] for n in names}, "seconds": 5}, open(os.path.join(jd, "job.json"), "w"))
     json.dump({"title": "m2-clips-job", "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
-    r = kaggle_cli("datasets", "version", "-p", jd, "-m", time.strftime("%Y-%m-%d %H:%M"), "-r", "zip")
-    if r.returncode != 0: kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", check=True)
-    for _ in range(30):                                               # wait until Kaggle has processed the new pictures
-        if "ready" in kaggle_cli("datasets", "status", ds_id).stdout.lower(): break
+    r = kaggle_cli("datasets", "version", "-p", jd, "-m", time.strftime("%Y-%m-%d %H:%M"), "-r", "zip", acc=acc)
+    if r.returncode != 0: kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
+    for _ in range(30):
+        if "ready" in kaggle_cli("datasets", "status", ds_id, acc=acc).stdout.lower(): break
         time.sleep(20)
-    kd = "/tmp/m2_kernel"; shutil.rmtree(kd, ignore_errors=True); os.makedirs(kd)
+    kd = f"/tmp/m2_kernel_{tag}"; shutil.rmtree(kd, ignore_errors=True); os.makedirs(kd)
     kern = [k_ for k_ in (os.path.join(_ME, "kaggle_job", "kernel.py"), os.path.join(_ME, "kernel.py"), os.path.join(HERE, "kernel.py")) if os.path.exists(k_)]
     if not kern: raise RuntimeError("kernel.py not found next to cloud_daily.py")
     shutil.copy(kern[0], os.path.join(kd, "kernel.py"))
     json.dump({"id": k_id, "title": "m2-clips", "code_file": "kernel.py", "language": "python", "kernel_type": "script", "is_private": True,
                "enable_gpu": True, "enable_internet": True, "dataset_sources": [ds_id], "competition_sources": [], "kernel_sources": []},
               open(os.path.join(kd, "kernel-metadata.json"), "w"))
-    kaggle_cli("kernels", "push", "-p", kd, check=True); say(f"   Kaggle job started ({len(pages)} clips on 2 GPUs, about {len(pages) * 9 // 2 + 20} min)")
-    limit = time.time() + 60 * float(os.getenv("M2_KAGGLE_MINUTES", "300"))
-    status = ""
-    while time.time() < limit:
-        time.sleep(60)
-        status = kaggle_cli("kernels", "status", k_id).stdout.lower()
-        if "complete" in status or "error" in status or "cancel" in status: break
-        if int(time.time() - T0) % 900 < 60: say(f"   Kaggle still working ... {status.strip()[-40:]}")
-    if "complete" not in status: say(f"   Kaggle job did not finish ({status.strip()[-60:]}) -> video without AI clips"); return 0
-    od = "/tmp/m2_out"; shutil.rmtree(od, ignore_errors=True); os.makedirs(od)
-    kaggle_cli("kernels", "output", k_id, "-p", od)
-    os.makedirs(P.p("clips"), exist_ok=True); got = 0
-    for f in glob.glob(os.path.join(od, "**", "*.mp4"), recursive=True):
-        name = os.path.basename(f).split("__")[0]
-        if re.fullmatch(r"\d{3}\.mp4", name): shutil.copy(f, P.p("clips", name)); got += 1
-    say(f"   {got} AI clips received"); return got
+    kaggle_cli("kernels", "push", "-p", kd, acc=acc, check=True)
+    return k_id
 
+
+def kaggle_clips(P, st, pages):
+    accs = kaggle_accounts()
+    if not accs: say("no Kaggle keys -> video without AI clips"); return 0
+    prompts = {}
+    for i in pages:
+        name = f"{i:03d}.png"
+        prompts[name], who = ai_prompt(P.p(m2.pics_dir(P), name), st["pictures"][i - 1].get("action", ""))
+        say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
+    names = sorted(prompts); jobs = []
+    for n, acc in enumerate(accs):                                     # pages shared out: 1st, 3rd, 5th ... / 2nd, 4th ...
+        mine = names[n::len(accs)]
+        if not mine: continue
+        try:
+            jobs.append((acc, start_job(acc, P, mine, prompts, acc["name"]), mine))
+            say(f"   Kaggle job started on account {n + 1} ({acc['user']}): {len(mine)} clips, about {len(mine) * 15 + 20} min")
+        except Exception as e:
+            say(f"   account {n + 1} could not start: {str(e)[:200]}")
+    limit = time.time() + 60 * float(os.getenv("M2_KAGGLE_MINUTES", "300")); done = {}
+    while jobs and len(done) < len(jobs) and time.time() < limit:
+        time.sleep(60)
+        for acc, k_id, mine in jobs:
+            if k_id + acc["name"] in done: continue
+            stt = kaggle_cli("kernels", "status", k_id, acc=acc).stdout.lower()
+            if any(w in stt for w in ("complete", "error", "cancel")): done[k_id + acc["name"]] = stt
+        if int(time.time() - T0) % 900 < 60: say(f"   Kaggle working ... {len(done)} of {len(jobs)} accounts finished")
+    os.makedirs(P.p("clips"), exist_ok=True); got = 0
+    for acc, k_id, mine in jobs:
+        stt = done.get(k_id + acc["name"], "not finished in time")
+        if "complete" not in stt: say(f"   {acc['user']}: job {stt.strip()[-60:]} -> its pages stay living pictures"); continue
+        od = f"/tmp/m2_out_{acc['name']}"; shutil.rmtree(od, ignore_errors=True); os.makedirs(od)
+        kaggle_cli("kernels", "output", k_id, "-p", od, acc=acc)
+        for f in glob.glob(os.path.join(od, "**", "*.mp4"), recursive=True):
+            name = os.path.basename(f).split("__")[0]
+            if re.fullmatch(r"\d{3}\.mp4", name): shutil.copy(f, P.p("clips", name)); got += 1
+    say(f"   {got} AI clips received (of {len(pages)})"); return got
 
 # ---------------------------------------------------------------- the day
 def main():

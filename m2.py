@@ -1244,11 +1244,14 @@ def video(subtitles=True):
     clipper, clipper2 = ClipFrames(), ClipFrames()
     n_clips = len({os.path.basename(f) for _, _, f, _ in plan if clip_for(P, f)})
     if n_clips: say(f"  {n_clips} pages play a real AI clip (characters move), the others are living pictures")
-    def frame_for(f, t, a):
+    def frame_for(f, t, a, b=None):
         c = clip_for(P, f)
         if c:
             fr_ = (clipper if c == clipper.path or clipper.path is None or c != clipper2.path else clipper2)
-            img_ = fr_.get(c, int((t - a) * 24))
+            fr_.get(c, 0); n_ = len(fr_.frames)
+            speed = 1.0
+            if b and n_: speed = min(1.0, max(0.75, (n_ / 24.0) / max(0.1, b - a)))   # a longer page -> the clip plays a little slower
+            img_ = fr_.get(c, int((t - a) * 24 * speed))
             if img_ is not None: return img_
         return cam(f, t)
     atmo = Atmosphere(); fxs = [atmosphere_for(b.get("place", "") or (st["pictures"][0].get("place", "") if st["pictures"] else "")) for b in st["beats"]]
@@ -1257,9 +1260,10 @@ def video(subtitles=True):
         t = fr / fps
         while pi < len(plan) - 1 and t >= plan[pi][1]: pi += 1
         a, b, f, bi = plan[pi]
-        img = frame_for(f, t, a)
+        img = frame_for(f, t, a, b)
         if pi + 1 < len(plan) and plan[pi + 1][2] != f:         # LONG dissolve: the picture melts into the next one
-            XF = min(2.0, (b - a) * 0.6)
+            clip_near = bool(clip_for(P, f) or clip_for(P, plan[pi + 1][2]))
+            XF = min(0.5 if clip_near else 1.2, (b - a) * 0.4)       # short melt next to AI clips -> no ghost pictures
             if t > b - XF:
                 w = (t - (b - XF)) / XF; w = w * w * (3 - 2 * w)    # smooth-step: starts and ends softly
                 nf = plan[pi + 1][2]; nc = clip_for(P, nf)
