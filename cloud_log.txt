@@ -1,0 +1,11 @@
+[16:12:46 +  0.0 min] === CLOUD DAILY: 1-min video, AI clips: 4 ===
+[16:12:46 +  0.0 min] STEP 1 story + voice
+[16:13:05 +  0.3 min]    गाँव की दो बैलियों की दोस्ती: 12 pictures needed
+[16:13:05 +  0.3 min] STEP 2 pictures (Cloudflare)
+[16:13:37 +  0.8 min]    pictures 10/12
+[16:13:42 +  0.9 min]    12 pictures made
+[16:13:42 +  0.9 min] STEP 3+4 key moments -> Kaggle clips
+[16:13:42 +  0.9 min] no Kaggle keys -> video without AI clips
+[16:13:42 +  0.9 min] STEP 5 video
+[16:16:58 +  4.2 min]    QC: CORRECTED & COMPLETE
+[16:16:58 +  4.2 min] === DONE in 4 min ===
