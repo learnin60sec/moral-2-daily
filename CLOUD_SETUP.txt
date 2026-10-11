@@ -1,0 +1,21 @@
+MORAL 2 - FULLY AUTOMATIC IN THE CLOUD (laptop can stay OFF)
+===============================================================
+EVERY DAY 05:00 IST GitHub runs cloud/cloud_daily.py:
+  story + voice -> pictures (Cloudflare FLUX, 2 accounts) -> EVERY picture gets an AI prompt (Groq vision) ->
+  Kaggle job (ComfyUI + Wan 2.2, BOTH free GPUs) turns every picture into a 5-s moving clip -> video (clips + living pictures, music,
+  subtitles, title, moral, doctor) -> YouTube upload (scheduled 18:00 IST, marked AI-made)
+  The video + log can also be downloaded from the GitHub run page (7 days).
+
+ONE-TIME SETUP
+ 1. GitHub: new PRIVATE repository, upload everything in this moral_2 folder (not projects, not secrets).
+ 2. Kaggle key: kaggle.com -> your picture -> Settings -> API -> "Create New Token" -> kaggle.json (username + key)
+ 3. YouTube: on the laptop once: YOUTUBE_LOGIN.bat (with client_secret.json) -> youtube_token.json appears.
+    Open it in Notepad, copy ALL the text.
+ 4. GitHub repo -> Settings -> Secrets and variables -> Actions -> New repository secret, add:
+      GROQ_API_KEY, GEMINI_API_KEY (optional), YOUTUBE_API_KEY (optional),
+      CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, CLOUDFLARE2_ACCOUNT_ID, CLOUDFLARE2_API_TOKEN,
+      KAGGLE_USERNAME, KAGGLE_KEY  (from kaggle.json),  YT_TOKEN_JSON (all text of youtube_token.json)
+ 5. GitHub -> Actions -> "Moral 2 daily video" -> "Run workflow" once to test. Then it runs every day by itself.
+LIMITS (free): Kaggle 30 GPU hours/week (3-min video = ~36 clips = ~2.7 h/day on 2 GPUs, about 19 h/week); Cloudflare ~40 pictures/day/account;
+GitHub job max ~6 h. If Kaggle fails, the video is still made with living pictures only.
+SETTINGS (in the .yml): M2_MINUTES (video length), M2_CLIPS (all = whole video from AI clips, or a number), STUDIO_TIMES (upload time IST)

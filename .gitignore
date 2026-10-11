@@ -1,0 +1,9 @@
+projects/
+my_pics/old_*
+youtube_token.json
+client_secret*.json
+*.mp4
+!music/*.mp3
+__pycache__/
+flow_bot.json
+BOT_CHECK.jpg
