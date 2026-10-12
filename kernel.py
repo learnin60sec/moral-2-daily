@@ -74,4 +74,17 @@ for f in glob.glob('/kaggle/working/clips/*'):                     # keep NNN.mp
     b_ = os.path.basename(f)
     if f.endswith('.mp4') and '__' in b_: shutil.move(f, os.path.join('/kaggle/working/clips', b_.split('__')[0] + '.mp4'))
     elif not (f.endswith('.mp4') or (f.endswith('.png') and len(b_) == 7)): os.remove(f)
-say('JOB DONE: ' + ', '.join(sorted(os.listdir('/kaggle/working/clips'))))
+made_pics = sorted(f for f in os.listdir('/kaggle/working/clips') if f.endswith('.png'))
+made_clips = sorted(f for f in os.listdir('/kaggle/working/clips') if f.endswith('.mp4'))
+def _tail(path, n=40):
+    try: return open(path, errors='ignore').read().splitlines()[-n:]
+    except Exception: return []
+report = {'pictures_asked': sorted(JOB.get('make_pictures', {})), 'pictures_made': made_pics, 'clips_asked': JOB['pictures'], 'clips_made': made_clips,
+          'minutes': round((time.time() - T0) / 60, 1), 'comfy_log_tail': _tail('/kaggle/working/comfy_log.txt') + _tail('/tmp/comfy_log.txt')}
+json.dump(report, open('/kaggle/working/clips/report.json', 'w'), indent=1)
+import zipfile
+with zipfile.ZipFile('/kaggle/working/results.zip', 'w', zipfile.ZIP_STORED) as z:
+    for f in os.listdir('/kaggle/working/clips'):
+        if f.endswith(('.mp4', '.png', '.json')): z.write(os.path.join('/kaggle/working/clips', f), f)
+for f in glob.glob('/kaggle/working/clips/*'): os.remove(f)          # only results.zip (+ logs) is left to download
+say(f'JOB DONE: {len(made_pics)} pictures, {len(made_clips)} clips -> results.zip')

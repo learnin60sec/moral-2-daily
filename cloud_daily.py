@@ -209,12 +209,30 @@ def kaggle_clips(P, st, pages):
             if any(w in stt for w in ("complete", "error", "cancel")): done[k_id + acc["name"]] = stt
         if int(time.time() - T0) % 900 < 60: say(f"   Kaggle working ... {len(done)} of {len(jobs)} accounts finished")
     os.makedirs(P.p("clips"), exist_ok=True); got = 0
-    for acc, k_id, mine in jobs:
+    for n_acc, (acc, k_id, mine) in enumerate(jobs, 1):
         stt = done.get(k_id + acc["name"], "not finished in time")
-        if "complete" not in stt: say(f"   {acc['user']}: job {stt.strip()[-60:]} -> its pages stay living pictures"); continue
+        say(f"   account {n_acc}: Kaggle job status = {stt.strip()[-60:]}")
         od = f"/tmp/m2_out_{acc['name']}"; shutil.rmtree(od, ignore_errors=True); os.makedirs(od)
-        try: kaggle_cli("kernels", "output", k_id, "-p", od, acc=acc)
-        except Exception as e: say(f"   {acc['user']}: could not download the results ({str(e)[:120]})"); continue
+        try: kaggle_cli("kernels", "output", k_id, "-p", od, acc=acc)          # also after an error: whatever was made is used
+        except Exception as e: say(f"   account {n_acc}: could not download the results ({str(e)[:120]})"); continue
+        import zipfile
+        for zf in glob.glob(os.path.join(od, "**", "results.zip"), recursive=True):
+            with zipfile.ZipFile(zf) as z: z.extractall(os.path.join(od, "results"))
+        rep = glob.glob(os.path.join(od, "**", "report.json"), recursive=True)
+        if rep:
+            r_ = json.load(open(rep[0]))
+            say(f"   account {n_acc} report: pictures {len(r_.get('pictures_made', []))}/{len(r_.get('pictures_asked', []))}, "
+                f"clips {len(r_.get('clips_made', []))}/{len(r_.get('clips_asked', []))}, {r_.get('minutes')} min on Kaggle")
+            if len(r_.get("clips_made", [])) < len(r_.get("clips_asked", [])):
+                for line in r_.get("comfy_log_tail", [])[-12:]: say(f"      ComfyUI: {line[:160]}")
+        else:
+            say(f"   account {n_acc}: no report from Kaggle - last lines of the Kaggle log:")
+        logs = [f for f in glob.glob(os.path.join(od, "**", "*.log"), recursive=True)]
+        if logs and (not rep or "complete" not in stt):
+            try:
+                txt = open(logs[0], errors="ignore").read()
+                for line in re.findall(r'"data":"(.*?)"', txt)[-15:] or txt.splitlines()[-15:]: say(f"      Kaggle: {line[:160]}")
+            except Exception: pass
         for f in glob.glob(os.path.join(od, "**", "*.mp4"), recursive=True):
             name = os.path.basename(f).split("__")[0]
             if re.fullmatch(r"\d{3}\.mp4", name): shutil.copy(f, P.p("clips", name)); got += 1
