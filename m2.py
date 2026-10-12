@@ -169,14 +169,52 @@ def _with_timeout(fn, seconds):
     return box.get("v")
 
 
+def azure_tts(text, out, rate="+0%", pitch="+0Hz", volume="+0%", want_marks=True, limit=240):
+    """Microsoft's OFFICIAL speech service (Azure, free F0 tier). Returns word marks (list) or None if not set up / failed."""
+    key, region = os.getenv("AZURE_SPEECH_KEY"), os.getenv("AZURE_SPEECH_REGION", "centralindia")
+    if not key: return None
+    try:
+        import azure.cognitiveservices.speech as sdk
+    except ImportError:
+        os.system(f'"{sys.executable}" -m pip install -q azure-cognitiveservices-speech')
+        try: import azure.cognitiveservices.speech as sdk
+        except ImportError: say("  (Azure speech package could not be installed)"); return None
+    from xml.sax.saxutils import escape
+    voice_name = os.getenv("M2_AZURE_VOICE", "hi-IN-MadhurNeural")
+    ssml = (f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="hi-IN"><voice name="{voice_name}">'
+            f'<prosody rate="{rate}" pitch="{pitch}" volume="{volume}">{escape(text)}</prosody></voice></speak>')
+    def run():
+        cfg = sdk.SpeechConfig(subscription=key, region=region)
+        cfg.set_speech_synthesis_output_format(sdk.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3)
+        syn = sdk.SpeechSynthesizer(speech_config=cfg, audio_config=None)
+        marks = []
+        if want_marks:
+            syn.synthesis_word_boundary.connect(lambda e: marks.append({"t": e.audio_offset / 1e7, "d": e.duration.total_seconds(),
+                                                                         "text": e.text, "kind": "WordBoundary"}))
+        r = syn.speak_ssml_async(ssml).get()
+        if r.reason == sdk.ResultReason.SynthesizingAudioCompleted and len(r.audio_data) > 2000:
+            open(out, "wb").write(r.audio_data); return marks
+        det = getattr(r, "cancellation_details", None)
+        raise RuntimeError(f"{r.reason} {getattr(det, 'error_details', '')}"[:200])
+    try:
+        res = _with_timeout(run, limit)
+        if res is None: say(f"  (Azure voice: no answer in {limit} s)")
+        return res
+    except Exception as e:
+        say(f"  (Azure voice failed: {str(e)[:150]})"); return None
+
+
 def voice(P, text):
     """ONE take for the whole story (no breaks). Saves word timings so pictures can follow the voice exactly.
     Microsoft voice with a time limit and 3 tries; then Gemini voice; then a clear error (never hangs for hours)."""
     out = P.p("FULL_VOICE.mp3")
     if os.getenv("STUDIO_VOICE", "microsoft").lower() == "gemini" and S.gemini_tts(text, "narrator", "warm", out, P):
         P.save("voice_marks.json", []); return out
-    import edge_tts
     v, rate, pitch = S.NARRATOR["edge"]
+    marks = azure_tts(text, out, rate, pitch)                        # 1st: Azure (official, free 500k characters/month)
+    if marks is not None:
+        P.save("voice_marks.json", marks); say(f"  voice (Azure): {S.probe(out)[0] / 60:.1f} min, {len(marks)} timing marks"); return out
+    import edge_tts                                                  # 2nd: Edge voice   3rd: Gemini voice
     limit = float(os.getenv("M2_VOICE_SECONDS", "240"))
     def one_take():
         marks, data = [], bytearray()
@@ -961,8 +999,11 @@ def short_voice(P, name, text, tone):
     out = P.p(f"{name}.mp3")
     if os.path.exists(out) and os.path.getsize(out) > 2000: return out
     try:
-        import edge_tts
         v, rate, pitch = S.NARRATOR["edge"]; r2, p2, vol = TONES.get(tone, TONES["happy"])
+        add0 = lambda a, b, u: f"{int(a.replace(u, '').replace('+', '')) + int(b.replace(u, '').replace('+', '')):+d}{u}"
+        if azure_tts(text, out, add0(rate, r2, "%"), add0(pitch, p2, "Hz"), vol, want_marks=False, limit=90) is not None and os.path.getsize(out) > 2000:
+            return out
+        import edge_tts
         add = lambda a, b, u: f"{int(a.replace(u, '').replace('+', '')) + int(b.replace(u, '').replace('+', '')):+d}{u}"
         com = edge_tts.Communicate(text, v, rate=add(rate, r2, "%"), pitch=add(pitch, p2, "Hz"), volume=vol)
         data = _with_timeout(lambda: b"".join(ch["data"] for ch in com.stream_sync() if ch["type"] == "audio"), 90)
