@@ -223,6 +223,79 @@ def kaggle_clips(P, st, pages):
             if re.fullmatch(r"\d{3}\.png", name) and not os.path.exists(dst): S.clean_frame(open(f, "rb").read(), dst); say(f"   picture {name} drawn on Kaggle")
     say(f"   {got} AI clips received (of {len(pages)})"); return got
 
+# ---------------------------------------------------------------- 4b) CLIP DOCTOR
+def _clip_frames(path, n=9, w=160, h=90):
+    import numpy as np
+    raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-i", path, "-vf", f"scale={w}:{h},format=gray", "-f", "rawvideo", "-"], capture_output=True).stdout
+    if not raw: return None
+    a = np.frombuffer(raw, np.uint8).reshape(-1, h, w).astype("float64")
+    return a[np.linspace(0, len(a) - 1, n).astype(int)]
+
+
+def _worst_similarity(a, b, k=10):
+    import numpy as np
+    vals = []
+    for i in range(0, a.shape[0] - k + 1, k):
+        for j in range(0, a.shape[1] - k + 1, k):
+            x, y = a[i:i + k, j:j + k], b[i:i + k, j:j + k]; mx, my = x.mean(), y.mean()
+            vals.append(((2 * mx * my + 6.5) * (2 * ((x - mx) * (y - my)).mean() + 58.5)) / ((mx ** 2 + my ** 2 + 6.5) * (x.var() + y.var() + 58.5)))
+    return float(np.percentile(vals, 10))
+
+
+def _ai_clip_ok(path):
+    """AI eyes: first and last frame - did anything turn into something else, a new character appear, or a face melt?"""
+    key_g, key_m = os.getenv("GROQ_API_KEY"), os.getenv("GEMINI_API_KEY")
+    if not (key_g or key_m): return True, "no AI check"
+    imgs = []
+    for t in ("0.1", "4.7"):
+        raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-ss", t, "-i", path, "-frames:v", "1", "-vf", "scale=512:-2", "-f", "image2", "-c:v", "mjpeg", "-"], capture_output=True).stdout
+        if raw: imgs.append(base64.b64encode(raw).decode())
+    if len(imgs) < 2: return True, "frames not read"
+    ask = ("Picture 1 is the first frame and picture 2 the last frame of a 5-second cartoon clip. Answer NO only if something clearly went "
+           "wrong: a person or animal turned into something else, a new person or creature appeared, a face or body melted or became "
+           "distorted, or the scene changed to a different place. Small natural movements are fine. "
+           'JSON only: {"ok": true or false, "problem": "short reason"}')
+    try:
+        if key_g:
+            r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {key_g}"}, timeout=60,
+                              json={"model": "meta-llama/llama-4-scout-17b-16e-instruct", "temperature": 0, "response_format": {"type": "json_object"},
+                                    "messages": [{"role": "user", "content": [{"type": "text", "text": ask}] + [
+                                        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b}} for b in imgs]}]})
+            if r.status_code == 200:
+                j = S.parse(r.json()["choices"][0]["message"]["content"]); return bool(j.get("ok", True)), str(j.get("problem", ""))[:100]
+        if key_m:
+            r = requests.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", headers={"x-goog-api-key": key_m}, timeout=60,
+                              json={"contents": [{"parts": [{"text": ask}] + [{"inline_data": {"mime_type": "image/jpeg", "data": b}} for b in imgs]}],
+                                    "generationConfig": {"responseMimeType": "application/json"}})
+            if r.status_code == 200:
+                j = S.parse(r.json()["candidates"][0]["content"]["parts"][0]["text"]); return bool(j.get("ok", True)), str(j.get("problem", ""))[:100]
+    except Exception:
+        pass
+    return True, "AI check not answered"
+
+
+def clip_doctor(P):
+    """every AI clip is checked; a bad one is moved to clips_rejected/ and its page uses the living picture instead"""
+    clips = sorted(glob.glob(P.p("clips", "*.mp4")))
+    if not clips: return
+    os.makedirs(P.p("clips_rejected"), exist_ok=True); bad = 0
+    for c in clips:
+        fr = _clip_frames(c); why = None
+        if fr is None or len(fr) < 3: why = "unreadable"
+        else:
+            import numpy as np
+            sim = min(_worst_similarity(fr[0], f) for f in fr[1:]); jump = max(float(np.abs(fr[i + 1] - fr[i]).mean()) for i in range(len(fr) - 1))
+            if sim < float(os.getenv("M2_CLIP_MIN_SIMILARITY", "0.05")) or jump > float(os.getenv("M2_CLIP_MAX_JUMP", "25")):
+                why = f"melting / scene jump (similarity {sim:.2f}, jump {jump:.0f})"
+        if not why:
+            ok, prob = _ai_clip_ok(c)
+            if not ok: why = f"AI: {prob}"
+        if why:
+            shutil.move(c, P.p("clips_rejected", os.path.basename(c))); bad += 1
+            say(f"   CLIP DOCTOR: {os.path.basename(c)} REJECTED - {why} -> this page uses the living picture")
+    say(f"   CLIP DOCTOR: {len(clips) - bad} of {len(clips)} clips passed")
+
+
 # ---------------------------------------------------------------- the day
 def main():
     minutes = float(os.getenv("M2_MINUTES", "3")); kc = os.getenv("M2_CLIPS", "all").lower()
@@ -246,6 +319,7 @@ def main():
     say("STEP 3+4 key moments -> Kaggle clips")
     try: kaggle_clips(P, st, key_pages(P, st, k))
     except Exception as e: say(f"   Kaggle step failed ({str(e)[:200]}) -> video without AI clips")
+    say("STEP 4b clip doctor"); clip_doctor(P)
     have = len(glob.glob(P.p(m2.pics_dir(P), "*.png")))
     if have < len(st["pictures"]) and cf_accounts():                  # Kaggle missed some pictures -> Cloudflare fills only those
         say(f"   {len(st['pictures']) - have} pictures still missing -> Cloudflare backup"); make_pictures(P, st)
