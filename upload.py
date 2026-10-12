@@ -132,8 +132,51 @@ def upload(folder, slot=0):
             yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(th)).execute(); print("  thumbnail set")
         except Exception as e:
             print("  (thumbnail not set - verify the channel with your phone number in YouTube to allow custom thumbnails)", str(e)[:80])
-    info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "mode": mode, "publishAt": status.get("publishAt")}
+    try:
+        lists = add_to_playlists(yt, vid, st); print("  playlists:", ", ".join(lists))
+    except Exception as e:
+        lists = []; print("  (playlists not updated:", str(e)[:120], ")")
+    info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "mode": mode, "publishAt": status.get("publishAt"), "playlists": lists}
     P.save("UPLOADED.json", info); return info
+
+
+PLAYLISTS = {   # title: (description, words that send a story there)
+    "All New Stories": ("Every day's new moral story - a new one every day at 6 PM.", []),
+    "Farmer Stories": ("Stories of hard work in the fields and the farmer's wisdom.", ["किसान", "खेत", "फसल", "हल", "बैल", "farmer", "field", "crop"]),
+    "Honesty Stories": ("Truth always wins - stories about honesty.", ["ईमानदार", "ईमानदारी", "सच", "सच्चाई", "honest", "truth"]),
+    "Friendship & Family": ("The sweetness of relationships - friends, brothers, parents.", ["दोस्त", "मित्र", "दोस्ती", "परिवार", "भाई", "बहन", "माँ", "पिता", "दादी", "दादा", "friend", "family"]),
+    "Greed & Lessons": ("What greed brings, and what it teaches.", ["लालच", "लालची", "सूदखोर", "साहूकार", "घमंड", "greed", "greedy"]),
+}
+
+
+def playlist_for(st):
+    """the best topic playlist for a story (by the words in its title, moral and story)"""
+    text = " ".join([str(st.get("title", "")), str(st.get("moral", ""))] + [b.get("narration", "") for b in st.get("beats", [])]).lower()
+    best, hits = None, 0
+    for name, (_, words) in PLAYLISTS.items():
+        n = sum(text.count(w.lower()) for w in words)
+        if n > hits: best, hits = name, n
+    return best
+
+
+def add_to_playlists(yt, video_id, st):
+    """creates the channel's playlists the first time, then puts the video in 'All New Stories' + its topic playlist"""
+    have, token = {}, None
+    while True:
+        r = yt.playlists().list(part="snippet", mine=True, maxResults=50, pageToken=token).execute()
+        for it in r.get("items", []): have[it["snippet"]["title"]] = it["id"]
+        token = r.get("nextPageToken")
+        if not token: break
+    added = []
+    for name in ["All New Stories"] + ([playlist_for(st)] if playlist_for(st) else []):
+        if name not in have:
+            body = {"snippet": {"title": name, "description": PLAYLISTS[name][0], "defaultLanguage": "en"}, "status": {"privacyStatus": "public"}}
+            have[name] = yt.playlists().insert(part="snippet,status", body=body).execute()["id"]
+            print(f"  playlist created: {name}")
+        yt.playlistItems().insert(part="snippet", body={"snippet": {"playlistId": have[name],
+                                  "resourceId": {"kind": "youtube#video", "videoId": video_id}}}).execute()
+        added.append(name)
+    return added
 
 
 def upload_m2(P, slot=0):
@@ -181,7 +224,11 @@ hook question, short summary without the ending, the moral, ask to subscribe", "
         if th:
             try: yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(th)).execute()
             except Exception as e: print("  (thumbnail not set - verify the channel with a phone number)", str(e)[:60])
-    info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "mode": mode, "publishAt": status.get("publishAt")}
+    try:
+        lists = add_to_playlists(yt, vid, st); print("  playlists:", ", ".join(lists))
+    except Exception as e:
+        lists = []; print("  (playlists not updated:", str(e)[:120], ")")
+    info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "mode": mode, "publishAt": status.get("publishAt"), "playlists": lists}
     P.save("UPLOADED.json", info); return info
 
 
