@@ -156,25 +156,51 @@ def trojan_prompts(P):
     open(P.p("PROMPTS_CHAPTERS.txt"), "w", encoding="utf-8").write("\n".join(lines))
 
 
+def _with_timeout(fn, seconds):
+    """run fn() in a background thread; None if it does not finish in time (a hung network call never blocks the day)"""
+    import threading
+    box = {}
+    def run():
+        try: box["v"] = fn()
+        except Exception as e: box["e"] = e
+    th = threading.Thread(target=run, daemon=True); th.start(); th.join(seconds)
+    if th.is_alive(): return None
+    if "e" in box: raise box["e"]
+    return box.get("v")
+
+
 def voice(P, text):
-    """ONE take for the whole story (no breaks). Saves word timings so pictures can follow the voice exactly."""
-    out = P.p("FULL_VOICE.mp3"); marks = []
+    """ONE take for the whole story (no breaks). Saves word timings so pictures can follow the voice exactly.
+    Microsoft voice with a time limit and 3 tries; then Gemini voice; then a clear error (never hangs for hours)."""
+    out = P.p("FULL_VOICE.mp3")
     if os.getenv("STUDIO_VOICE", "microsoft").lower() == "gemini" and S.gemini_tts(text, "narrator", "warm", out, P):
         P.save("voice_marks.json", []); return out
     import edge_tts
     v, rate, pitch = S.NARRATOR["edge"]
-    try:
-        com = edge_tts.Communicate(text, v, rate=rate, pitch=pitch, boundary="WordBoundary")
-    except TypeError:
-        com = edge_tts.Communicate(text, v, rate=rate, pitch=pitch)
-    with open(out, "wb") as f:
+    limit = float(os.getenv("M2_VOICE_SECONDS", "240"))
+    def one_take():
+        marks, data = [], bytearray()
+        try:
+            com = edge_tts.Communicate(text, v, rate=rate, pitch=pitch, boundary="WordBoundary")
+        except TypeError:
+            com = edge_tts.Communicate(text, v, rate=rate, pitch=pitch)
         for ch in com.stream_sync():
-            if ch["type"] == "audio": f.write(ch["data"])
+            if ch["type"] == "audio": data.extend(ch["data"])
             elif ch["type"] in ("WordBoundary", "SentenceBoundary"):
                 marks.append({"t": ch["offset"] / 1e7, "d": ch["duration"] / 1e7, "text": ch["text"], "kind": ch["type"]})
-    P.save("voice_marks.json", marks)
-    print(f"  voice: {S.probe(out)[0] / 60:.1f} min, {len(marks)} timing marks")
-    return out
+        return bytes(data), marks
+    for attempt in range(1, 4):
+        try:
+            res = _with_timeout(one_take, limit)
+        except Exception as e:
+            res = None; say(f"  voice try {attempt}: error {str(e)[:120]}")
+        if res and len(res[0]) > 5000:
+            open(out, "wb").write(res[0]); P.save("voice_marks.json", res[1])
+            say(f"  voice: {S.probe(out)[0] / 60:.1f} min, {len(res[1])} timing marks"); return out
+        say(f"  voice try {attempt}: no answer in {int(limit)} s - trying again"); time.sleep(10)
+    if os.getenv("GEMINI_API_KEY") and _with_timeout(lambda: S.gemini_tts(text, "narrator", "warm", out, P), limit):
+        P.save("voice_marks.json", []); say("  voice made with Gemini (Microsoft voice did not answer)"); return out
+    raise SystemExit("VOICE FAILED: Microsoft voice did not answer 3 times (and no Gemini voice). Try again later.")
 
 
 # ------------------------------------------------------------------ 2) import the downloaded pictures in download order
@@ -939,9 +965,9 @@ def short_voice(P, name, text, tone):
         v, rate, pitch = S.NARRATOR["edge"]; r2, p2, vol = TONES.get(tone, TONES["happy"])
         add = lambda a, b, u: f"{int(a.replace(u, '').replace('+', '')) + int(b.replace(u, '').replace('+', '')):+d}{u}"
         com = edge_tts.Communicate(text, v, rate=add(rate, r2, "%"), pitch=add(pitch, p2, "Hz"), volume=vol)
-        with open(out, "wb") as f:
-            for ch in com.stream_sync():
-                if ch["type"] == "audio": f.write(ch["data"])
+        data = _with_timeout(lambda: b"".join(ch["data"] for ch in com.stream_sync() if ch["type"] == "audio"), 90)
+        if not data: say(f"  ({name} voice: no answer in 90 s - skipped)"); return None
+        open(out, "wb").write(data)
         return out if os.path.getsize(out) > 2000 else None
     except Exception as e:
         print(f"  ({name} voice not made: {str(e)[:60]})"); return None
@@ -1119,6 +1145,21 @@ class Atmosphere:
         return out
 
 
+def corner_logo():
+    """the channel logo for the top-right corner (CORNER_LOGO.png next to m2.py); None if missing or switched off"""
+    if os.getenv("M2_LOGO", "1") == "0": return None
+    f = os.path.join(HERE, "CORNER_LOGO.png")
+    if not os.path.exists(f): return None
+    import numpy as np
+    from PIL import Image
+    w = int(os.getenv("M2_LOGO_WIDTH", "180")); op = float(os.getenv("M2_LOGO_OPACITY", "0.9"))   # small, tucked in the corner
+    with Image.open(f) as im:
+        im = im.convert("RGBA"); im = im.resize((w, max(1, int(w * im.size[1] / im.size[0]))), Image.LANCZOS)
+    a = np.asarray(im).astype("float32"); alpha = a[..., 3:4] / 255.0 * op
+    x0, y0 = 1280 - w - 14, 12                                   # 14 px from the right edge, 12 px from the top
+    return (x0, y0, a[..., :3], alpha)
+
+
 class ClipFrames:
     """frames of an AI clip (clips/NNN.mp4) for the page that is being shown; played at normal speed, back-and-forth if the
     page is shown longer than the clip"""
@@ -1241,6 +1282,8 @@ def video(subtitles=True):
     enc = subprocess.Popen([ff, "-y", "-v", "quiet", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", "1280x720", "-r", str(fps), "-i", "-",
                             "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "20", "-preset", "veryfast", out_v], stdin=subprocess.PIPE)
     pi, dark, t_start = 0, 0, time.time()
+    logo = corner_logo()
+    if logo is not None: say("  channel logo in the top-right corner")
     clipper, clipper2 = ClipFrames(), ClipFrames()
     n_clips = len({os.path.basename(f) for _, _, f, _ in plan if clip_for(P, f)})
     if n_clips: say(f"  {n_clips} pages play a real AI clip (characters move), the others are living pictures")
@@ -1271,6 +1314,9 @@ def video(subtitles=True):
                 img = img * (1 - w) + (nxt if nxt is not None else cam(nf, t)) * w
         if os.getenv("M2_ATMOSPHERE", "1") != "0" and bi >= 0:   # living details of this part's place
             img = atmo.draw(img, t, fxs[bi], float(os.getenv("M2_ATMOSPHERE_STRENGTH", "1.0")))
+        if logo is not None:                                     # channel logo, always in the top-right corner
+            lx, ly, lrgb, la = logo; h_, w_ = la.shape[:2]
+            img[ly:ly + h_, lx:lx + w_] = img[ly:ly + h_, lx:lx + w_] * (1 - la) + lrgb * la
         if fr % fps == 0 and img.mean() < 10: dark += 1         # LIVE CHECK 2: black picture
         enc.stdin.write(img.clip(0, 255).astype(np.uint8).tobytes())
         if fr % (fps * 15) == 0 and fr:
