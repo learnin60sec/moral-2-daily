@@ -2,7 +2,14 @@ name: Moral 2 daily video
 on:
   schedule:
     - cron: "30 0 * * *"         # every day 06:00 IST (00:30 UTC) - after Cloudflare resets the free amount (00:00 UTC)
-  workflow_dispatch: {}          # "Run workflow" button for a manual run
+  workflow_dispatch:              # "Run workflow" button for a manual run
+    inputs:
+      minutes:
+        description: "Video length in minutes (0.5 = 30-second test)"
+        default: "3"
+      upload:
+        description: "Upload to YouTube? (1 = yes, 0 = no, for tests)"
+        default: "1"
 permissions:
   contents: write
 jobs:
@@ -39,7 +46,8 @@ jobs:
           KAGGLE2_USERNAME: ${{ secrets.KAGGLE2_USERNAME }}
           KAGGLE2_KEY: ${{ secrets.KAGGLE2_KEY }}
           KAGGLE2_API_TOKEN: ${{ secrets.KAGGLE2_API_TOKEN }}
-          M2_MINUTES: "3"
+          M2_MINUTES: ${{ github.event.inputs.minutes || '3' }}
+          M2_AUTO_UPLOAD: ${{ github.event.inputs.upload || '1' }}
           M2_PICTURES: "kaggle"          # pictures by ComfyUI (FLUX) on Kaggle; "cloudflare" = old way
           M2_SECONDS_PER_PICTURE: "6"     # 3 min = ~30 clips, shared by 2 Kaggle accounts
           M2_KAGGLE_MINUTES: "300"
