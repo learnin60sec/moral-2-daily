@@ -101,3 +101,11 @@
 [07:21:16 +  0.0 min] STEP 1 story + voice
 [12:48:31 +  0.0 min] === CLOUD DAILY: 3-min video, AI clips: ALL pictures ===
 [12:48:31 +  0.0 min] STEP 1 story + voice
+[12:54:06 +  0.0 min] === CLOUD DAILY: 3-min video, AI clips: ALL pictures ===
+[12:54:06 +  0.0 min] STEP 1 story + voice
+[13:07:42 + 13.6 min]    मिट्टी की किल्ली: 27 pictures needed
+[13:07:42 + 13.6 min] STEP 2 pictures (Cloudflare)
+[13:07:42 + 13.6 min]    account 1 used up -> account 2
+[13:07:43 + 13.6 min]    Cloudflare free amount used up at picture 1 - the video uses 0 pictures
+[13:07:43 + 13.6 min]    0 pictures made
+[13:07:43 + 13.6 min] STOP: too few pictures today (Cloudflare limit?) - try again tomorrow
