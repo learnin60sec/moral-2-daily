@@ -24,16 +24,27 @@ def cf_accounts():
 
 
 def flux(prompt, acc):
-    """bytes of one picture, 'LIMIT' when this account's free daily amount is used up, None on other errors"""
-    r = requests.post(f"https://api.cloudflare.com/client/v4/accounts/{acc[0]}/ai/run/@cf/black-forest-labs/flux-1-schnell",
-                      headers={"Authorization": f"Bearer {acc[1]}"}, json={"prompt": prompt, "steps": 8}, timeout=180)
-    if r.headers.get("content-type", "").startswith("image/"): return r.content
-    try: j = r.json()
-    except Exception: return None
-    if r.status_code == 200 and j.get("result", {}).get("image"): return base64.b64decode(j["result"]["image"])
-    text = json.dumps(j.get("errors", j))[:300]
-    if r.status_code == 429 or "4006" in text or "neurons" in text.lower(): return "LIMIT"
-    say(f"   picture error {r.status_code}: {text[:150]}"); return None
+    """bytes of one picture | ("LIMIT", message) when this account's free DAILY amount is used up | None on other errors.
+    'Too many requests right now' (rate limit) is NOT the daily limit: wait and try again."""
+    for wait in (0, 20, 40, 60, 90):
+        if wait: time.sleep(wait)
+        try:
+            r = requests.post(f"https://api.cloudflare.com/client/v4/accounts/{acc[0]}/ai/run/@cf/black-forest-labs/flux-1-schnell",
+                              headers={"Authorization": f"Bearer {acc[1]}"}, json={"prompt": prompt, "steps": 8}, timeout=180)
+        except Exception as e:
+            say(f"   picture: network {str(e)[:80]} - trying again"); continue
+        if r.headers.get("content-type", "").startswith("image/"): return r.content
+        try: j = r.json()
+        except Exception: j = {"raw": r.text[:300]}
+        if r.status_code == 200 and isinstance(j, dict) and j.get("result", {}).get("image"): return base64.b64decode(j["result"]["image"])
+        text = json.dumps(j.get("errors", j) if isinstance(j, dict) else j, ensure_ascii=False)[:300]
+        low = text.lower()
+        if any(w in low for w in ("4006", "neuron", "daily", "allocation", "free tier", "quota")):
+            return ("LIMIT", f"{r.status_code} {text}")
+        if r.status_code in (429, 500, 502, 503, 504):
+            say(f"   Cloudflare busy ({r.status_code}): {text[:120]} - waiting and trying again"); continue
+        say(f"   picture error {r.status_code}: {text[:200]}"); return None
+    return None
 
 
 def make_pictures(P, st):
@@ -46,10 +57,11 @@ def make_pictures(P, st):
         prompt = m2.full_prompt(p, looks) + " Always the same character design and the same clothes in every picture."
         for _try in range(3):
             res = flux(prompt, accs[ai])
-            if res == "LIMIT":
+            if isinstance(res, tuple):
+                say(f"   account {ai + 1} says: {res[1][:200]}")
                 ai += 1
                 if ai >= len(accs): say(f"   Cloudflare free amount used up at picture {i} - the video uses {made} pictures"); return made
-                say("   account 1 used up -> account 2"); continue
+                say(f"   -> account {ai + 1}"); continue
             if res: S.clean_frame(res, out); made += 1; break
             time.sleep(3)
         if i % 10 == 0: say(f"   pictures {i}/{len(st['pictures'])}")
@@ -200,6 +212,9 @@ def main():
     say("STEP 1 story + voice"); P = m2.story(minutes); st = P.load("story.json")
     say(f"   {st.get('title', '')}: {len(st['pictures'])} pictures needed")
     say("STEP 2 pictures (Cloudflare)"); made = make_pictures(P, st); say(f"   {made} pictures made")
+    if made < len(st["pictures"]) * 0.5:                              # one more chance after a pause
+        say("   too few pictures - waiting 15 min and trying once more"); time.sleep(900)
+        made = make_pictures(P, st); say(f"   {made} pictures made")
     if made < len(st["pictures"]) * 0.5: say("STOP: too few pictures today (Cloudflare limit?) - try again tomorrow"); sys.exit(1)
     say("STEP 3+4 key moments -> Kaggle clips")
     try: kaggle_clips(P, st, key_pages(P, st, k))
