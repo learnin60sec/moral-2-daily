@@ -71,7 +71,7 @@ def make_pictures(P, st):
 # ---------------------------------------------------------------- 3) key moments + AI prompts
 def key_pages(P, st, k):
     have = [i for i in range(1, len(st["pictures"]) + 1) if os.path.exists(P.p(m2.pics_dir(P), f"{i:03d}.png"))]
-    if k <= 0: return have                                            # M2_CLIPS=all -> EVERY picture becomes a moving clip
+    if k <= 0: return list(range(1, len(st["pictures"]) + 1))        # M2_CLIPS=all -> EVERY page becomes a moving clip
     first = []
     for bi in range(len(st["beats"])):
         mine = [i for i in have if st["pictures"][i - 1]["beat"] == bi]
@@ -149,8 +149,12 @@ def start_job(acc, P, names, prompts, tag):
     """upload the pictures + prompts as this account's dataset and start its Kaggle job"""
     ds_id, k_id = f"{acc['user']}/m2-clips-job", f"{acc['user']}/m2-clips"
     jd = f"/tmp/m2_job_{tag}"; shutil.rmtree(jd, ignore_errors=True); os.makedirs(jd)
-    for n in names: shutil.copy(P.p(m2.pics_dir(P), n), os.path.join(jd, n))
-    json.dump({"pictures": names, "prompts": {n: prompts[n] for n in names}, "seconds": 5}, open(os.path.join(jd, "job.json"), "w"))
+    draw = {}
+    for n in names:
+        src = P.p(m2.pics_dir(P), n)
+        if os.path.exists(src): shutil.copy(src, os.path.join(jd, n))
+        else: draw[n] = DRAW.get(n, "")
+    json.dump({"pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5}, open(os.path.join(jd, "job.json"), "w"))
     json.dump({"title": "m2-clips-job", "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
     r = kaggle_cli("datasets", "version", "-p", jd, "-m", time.strftime("%Y-%m-%d %H:%M"), "-r", "zip", acc=acc)
     if r.returncode != 0: kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
@@ -168,14 +172,25 @@ def start_job(acc, P, names, prompts, tag):
     return k_id
 
 
+DRAW = {}
+
+
 def kaggle_clips(P, st, pages):
     accs = kaggle_accounts()
     if not accs: say("no Kaggle keys -> video without AI clips"); return 0
-    prompts = {}
+    prompts = {}; looks = st.get("characters", {})
+    os.makedirs(P.p(m2.pics_dir(P)), exist_ok=True); os.makedirs(P.p("clips"), exist_ok=True)
     for i in pages:
-        name = f"{i:03d}.png"
-        prompts[name], who = ai_prompt(P.p(m2.pics_dir(P), name), st["pictures"][i - 1].get("action", ""))
+        name = f"{i:03d}.png"; moment = st["pictures"][i - 1].get("action", "")
+        if os.path.exists(P.p(m2.pics_dir(P), name)):
+            prompts[name], who = ai_prompt(P.p(m2.pics_dir(P), name), moment)
+        else:                                                         # no picture yet: Kaggle draws it first (FLUX), prompt from the story
+            DRAW[name] = m2.full_prompt(st["pictures"][i - 1], looks) + " Always the same character design and the same clothes in every picture."
+            prompts[name], who = (moment.rstrip(". ") + ". " if moment else "") + ("The characters make small natural movements, gentle wind moves the grass, "
+                                  "static camera, nothing enters the frame from the edges, nothing covers any face. Premium 2D cartoon style, the same "
+                                  "characters with exactly the same faces, clothes and colours."), "story text (picture drawn on Kaggle)"
         say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
+    if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI (FLUX)")
     names = sorted(prompts); jobs = []
     for n, acc in enumerate(accs):                                     # pages shared out: 1st, 3rd, 5th ... / 2nd, 4th ...
         mine = names[n::len(accs)]
@@ -198,10 +213,14 @@ def kaggle_clips(P, st, pages):
         stt = done.get(k_id + acc["name"], "not finished in time")
         if "complete" not in stt: say(f"   {acc['user']}: job {stt.strip()[-60:]} -> its pages stay living pictures"); continue
         od = f"/tmp/m2_out_{acc['name']}"; shutil.rmtree(od, ignore_errors=True); os.makedirs(od)
-        kaggle_cli("kernels", "output", k_id, "-p", od, acc=acc)
+        try: kaggle_cli("kernels", "output", k_id, "-p", od, acc=acc)
+        except Exception as e: say(f"   {acc['user']}: could not download the results ({str(e)[:120]})"); continue
         for f in glob.glob(os.path.join(od, "**", "*.mp4"), recursive=True):
             name = os.path.basename(f).split("__")[0]
             if re.fullmatch(r"\d{3}\.mp4", name): shutil.copy(f, P.p("clips", name)); got += 1
+        for f in glob.glob(os.path.join(od, "**", "*.png"), recursive=True):    # pictures drawn on Kaggle
+            name = os.path.basename(f); dst = P.p(m2.pics_dir(P), name)
+            if re.fullmatch(r"\d{3}\.png", name) and not os.path.exists(dst): S.clean_frame(open(f, "rb").read(), dst); say(f"   picture {name} drawn on Kaggle")
     say(f"   {got} AI clips received (of {len(pages)})"); return got
 
 # ---------------------------------------------------------------- the day
@@ -211,14 +230,27 @@ def main():
     say(f"=== CLOUD DAILY: {minutes:.0f}-min video, AI clips: {'ALL pictures' if k == 0 else k} ===")
     say("STEP 1 story + voice"); P = m2.story(minutes); st = P.load("story.json")
     say(f"   {st.get('title', '')}: {len(st['pictures'])} pictures needed")
-    say("STEP 2 pictures (Cloudflare)"); made = make_pictures(P, st); say(f"   {made} pictures made")
-    if made < len(st["pictures"]) * 0.5:                              # one more chance after a pause
+    src_ = os.getenv("M2_PICTURES", "kaggle").lower()
+    if src_ == "kaggle" and kaggle_accounts():                        # pictures drawn on Kaggle with ComfyUI (FLUX), no Cloudflare limits
+        say("STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX) in the same job as the clips"); made = 0
+    else:
+        say("STEP 2 pictures (Cloudflare)"); made = make_pictures(P, st); say(f"   {made} pictures made")
+    if src_ == "kaggle" and kaggle_accounts():
+        pass
+    elif made < len(st["pictures"]) and kaggle_accounts():
+        say(f"   {len(st['pictures']) - made} pictures missing -> Kaggle will draw them (FLUX) before making the clips")
+    elif made < len(st["pictures"]) * 0.5:                              # no Kaggle: one more chance after a pause
         say("   too few pictures - waiting 15 min and trying once more"); time.sleep(900)
         made = make_pictures(P, st); say(f"   {made} pictures made")
-    if made < len(st["pictures"]) * 0.5: say("STOP: too few pictures today (Cloudflare limit?) - try again tomorrow"); sys.exit(1)
+        if made < len(st["pictures"]) * 0.5: say("STOP: too few pictures today (Cloudflare limit?) - try again tomorrow"); sys.exit(1)
     say("STEP 3+4 key moments -> Kaggle clips")
     try: kaggle_clips(P, st, key_pages(P, st, k))
     except Exception as e: say(f"   Kaggle step failed ({str(e)[:200]}) -> video without AI clips")
+    have = len(glob.glob(P.p(m2.pics_dir(P), "*.png")))
+    if have < len(st["pictures"]) and cf_accounts():                  # Kaggle missed some pictures -> Cloudflare fills only those
+        say(f"   {len(st['pictures']) - have} pictures still missing -> Cloudflare backup"); make_pictures(P, st)
+        have = len(glob.glob(P.p(m2.pics_dir(P), "*.png")))
+    if have < len(st["pictures"]) * 0.5: say(f"STOP: only {have} of {len(st['pictures'])} pictures (Cloudflare and Kaggle) - try again tomorrow"); sys.exit(1)
     say("STEP 5 video"); m2.video(True)
     qc = open(P.p("QC_REPORT.txt"), encoding="utf-8").read() if os.path.exists(P.p("QC_REPORT.txt")) else ""
     say("   QC: " + qc.splitlines()[0] if qc else "   QC missing")
