@@ -192,16 +192,36 @@ def azure_tts(text, out, rate="+0%", pitch="+0Hz", volume="+0%", want_marks=True
             syn.synthesis_word_boundary.connect(lambda e: marks.append({"t": e.audio_offset / 1e7, "d": e.duration.total_seconds(),
                                                                          "text": e.text, "kind": "WordBoundary"}))
         r = syn.speak_ssml_async(ssml).get()
-        if r.reason == sdk.ResultReason.SynthesizingAudioCompleted and len(r.audio_data) > 2000:
-            open(out, "wb").write(r.audio_data); return marks
+        if r.reason == sdk.ResultReason.SynthesizingAudioCompleted:
+            data = bytes(r.audio_data or b"")
+            if len(data) < 2000:                                      # the documented way to read the finished audio
+                try:
+                    tmp_ = out + ".azure"; sdk.AudioDataStream(r).save_to_wav_file(tmp_); data = open(tmp_, "rb").read(); os.remove(tmp_)
+                except Exception as e:
+                    say(f"  (Azure audio stream: {str(e)[:80]})")
+            if len(data) > 2000:
+                open(out, "wb").write(data); return marks
+            raise RuntimeError(f"audio finished but only {len(data)} bytes came back")
         det = getattr(r, "cancellation_details", None)
         raise RuntimeError(f"{r.reason} {getattr(det, 'error_details', '')}"[:200])
     try:
         res = _with_timeout(run, limit)
         if res is None: say(f"  (Azure voice: no answer in {limit} s)")
-        return res
+        else: return res
     except Exception as e:
-        say(f"  (Azure voice failed: {str(e)[:150]})"); return None
+        say(f"  (Azure voice failed: {str(e)[:150]})")
+    # the plain web way (no SDK): Azure returns the finished mp3 directly (no word times)
+    try:
+        import requests
+        r = requests.post(f"https://{region}.tts.speech.microsoft.com/cognitiveservices/v1", data=ssml.encode("utf-8"), timeout=limit,
+                          headers={"Ocp-Apim-Subscription-Key": key, "Content-Type": "application/ssml+xml",
+                                   "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3", "User-Agent": "moral-story-club"})
+        if r.status_code == 200 and len(r.content) > 2000:
+            open(out, "wb").write(r.content); say(f"  (Azure voice by web request: {len(r.content) // 1024} KB, no word times)"); return []
+        say(f"  (Azure web request: {r.status_code} {r.text[:120]})")
+    except Exception as e:
+        say(f"  (Azure web request failed: {str(e)[:120]})")
+    return None
 
 
 def voice(P, text):
@@ -213,9 +233,10 @@ def voice(P, text):
     v, rate, pitch = S.NARRATOR["edge"]
     marks = azure_tts(text, out, rate, pitch)                        # 1st: Azure (official, free 500k characters/month)
     if marks is not None:
-        P.save("voice_marks.json", marks); say(f"  voice (Azure): {S.probe(out)[0] / 60:.1f} min, {len(marks)} timing marks"); return out
+        P.save("voice_marks.json", marks)
+        say(f"  voice (Azure): {S.probe(out)[0] / 60:.1f} min, {os.path.getsize(out) // 1024} KB, {len(marks)} timing marks"); return out
     import edge_tts                                                  # 2nd: Edge voice   3rd: Gemini voice
-    limit = float(os.getenv("M2_VOICE_SECONDS", "240"))
+    limit = float(os.getenv("M2_VOICE_SECONDS", "90"))
     def one_take():
         marks, data = [], bytearray()
         try:
@@ -227,7 +248,7 @@ def voice(P, text):
             elif ch["type"] in ("WordBoundary", "SentenceBoundary"):
                 marks.append({"t": ch["offset"] / 1e7, "d": ch["duration"] / 1e7, "text": ch["text"], "kind": ch["type"]})
         return bytes(data), marks
-    for attempt in range(1, 4):
+    for attempt in range(1, 3):
         try:
             res = _with_timeout(one_take, limit)
         except Exception as e:
@@ -238,7 +259,7 @@ def voice(P, text):
         say(f"  voice try {attempt}: no answer in {int(limit)} s - trying again"); time.sleep(10)
     if os.getenv("GEMINI_API_KEY") and _with_timeout(lambda: S.gemini_tts(text, "narrator", "warm", out, P), limit):
         P.save("voice_marks.json", []); say("  voice made with Gemini (Microsoft voice did not answer)"); return out
-    raise SystemExit("VOICE FAILED: Microsoft voice did not answer 3 times (and no Gemini voice). Try again later.")
+    raise SystemExit("VOICE FAILED: Azure, Edge and Gemini voices all failed (see the lines above). Try again later.")
 
 
 # ------------------------------------------------------------------ 2) import the downloaded pictures in download order
