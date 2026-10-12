@@ -6,7 +6,7 @@ on:
     inputs:
       minutes:
         description: "Video length in minutes (0.5 = 30-second test)"
-        default: "3"
+        default: "2.5"
       upload:
         description: "Upload to YouTube? (1 = yes, 0 = no, for tests)"
         default: "1"
@@ -46,7 +46,7 @@ jobs:
           KAGGLE2_USERNAME: ${{ secrets.KAGGLE2_USERNAME }}
           KAGGLE2_KEY: ${{ secrets.KAGGLE2_KEY }}
           KAGGLE2_API_TOKEN: ${{ secrets.KAGGLE2_API_TOKEN }}
-          M2_MINUTES: ${{ github.event.inputs.minutes || '3' }}
+          M2_MINUTES: ${{ github.event.inputs.minutes || '2.5' }}
           M2_AUTO_UPLOAD: ${{ github.event.inputs.upload || '1' }}
           M2_PICTURES: "kaggle"          # pictures by ComfyUI (FLUX) on Kaggle; "cloudflare" = old way
           M2_SECONDS_PER_PICTURE: "6"     # 3 min = ~30 clips, shared by 2 Kaggle accounts
