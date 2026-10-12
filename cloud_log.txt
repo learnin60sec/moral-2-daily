@@ -176,3 +176,46 @@
 [16:28:48 + 82.8 min] STEP 5 video
 [16:31:06 + 85.1 min]    QC: CORRECTED & COMPLETE
 [16:31:06 + 85.1 min] === DONE in 85 min ===
+[17:15:11 +  0.0 min] === CLOUD DAILY: 0-min video, AI clips: ALL pictures ===
+[17:15:11 +  0.0 min] STEP 1 story + voice
+[17:15:29 +  0.3 min]    दादी की बांसुरी और गाँव की शांति: 7 pictures needed
+[17:15:29 +  0.3 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX) in the same job as the clips
+[17:15:29 +  0.3 min] STEP 3+4 key moments -> Kaggle clips
+[17:15:29 +  0.3 min]    prompt 001.png (written by story text (picture drawn on Kaggle)): A grandmother lifts her bamboo flute and begins to play a sweet melody as sunrise light spreads over the villa...
+[17:15:29 +  0.3 min]    prompt 002.png (written by story text (picture drawn on Kaggle)): A curious five‑year‑old Ragav watches his grandmother, his eyes wide with wonder, trying to follow the melody ...
+[17:15:29 +  0.3 min]    prompt 003.png (written by story text (picture drawn on Kaggle)): The village priest stands on a stone platform chanting a prayer, while nearby the garden workers start shoutin...
+[17:15:29 +  0.3 min]    prompt 004.png (written by story text (picture drawn on Kaggle)): Ragav reaches out, takes his grandmother's flute, and gently blows, his small fingers adjusting the notes as h...
+[17:15:29 +  0.3 min]    prompt 005.png (written by story text (picture drawn on Kaggle)): Ragav plays a fresh tune that weaves with the garden workers' chatter, and together they all start singing in ...
+[17:15:29 +  0.3 min]    prompt 006.png (written by story text (picture drawn on Kaggle)): The villagers, including the grandmother, the priest, Ragav, and the garden workers, gather in the courtyard a...
+[17:15:29 +  0.3 min]    prompt 007.png (written by story text (picture drawn on Kaggle)): They share warm smiles, their faces illuminated by lantern light, reflecting the restored harmony of the villa...
+[17:15:29 +  0.3 min]    7 pictures will be drawn on Kaggle with ComfyUI (FLUX)
+[17:16:00 +  0.8 min]    Kaggle job started on account 1 (hasanpurjunction): 4 clips, about 80 min
+[17:16:35 +  1.4 min]    Kaggle job started on account 2 (kdlmeesho): 3 clips, about 65 min
+[17:30:46 + 15.6 min]    Kaggle working ... 0 of 2 accounts finished
+[17:45:59 + 30.8 min]    Kaggle working ... 0 of 2 accounts finished
+[18:01:11 + 46.0 min]    Kaggle working ... 0 of 2 accounts finished
+[18:15:21 + 60.2 min]    Kaggle working ... 0 of 2 accounts finished
+[18:30:30 + 75.3 min]    Kaggle working ... 1 of 2 accounts finished
+[18:45:36 + 90.4 min]    Kaggle working ... 1 of 2 accounts finished
+[19:00:43 +105.5 min]    Kaggle working ... 1 of 2 accounts finished
+[19:15:49 +120.6 min]    Kaggle working ... 1 of 2 accounts finished
+[19:18:50 +123.7 min]    account 1: Kaggle job status = urjunction/m2-clips has status "kernelworkerstatus.complete"
+[19:18:54 +123.7 min]    account 1 report: pictures 4/4, clips 4/4, 63.8 min on Kaggle
+[19:18:54 +123.7 min]    picture 007.png drawn on Kaggle
+[19:18:54 +123.7 min]    picture 001.png drawn on Kaggle
+[19:18:55 +123.7 min]    picture 003.png drawn on Kaggle
+[19:18:55 +123.7 min]    picture 005.png drawn on Kaggle
+[19:18:55 +123.7 min]    account 2: Kaggle job status = kdlmeesho/m2-clips has status "kernelworkerstatus.complete"
+[19:18:59 +123.8 min]    account 2 report: pictures 3/3, clips 3/3, 61.1 min on Kaggle
+[19:18:59 +123.8 min]    picture 004.png drawn on Kaggle
+[19:19:00 +123.8 min]    picture 002.png drawn on Kaggle
+[19:19:00 +123.8 min]    picture 006.png drawn on Kaggle
+[19:19:00 +123.8 min]    7 AI clips received (of 7)
+[19:19:00 +123.8 min] STEP 4b clip doctor
+[19:19:11 +124.0 min]    CLIP DOCTOR: 007.mp4 REJECTED - melting / scene jump (similarity -0.10, jump 25) -> this page uses the living picture
+[19:19:11 +124.0 min]    CLIP DOCTOR: 6 of 7 clips passed
+[19:19:11 +124.0 min] STEP 5 video
+[19:20:44 +125.5 min]    QC: CORRECTED & COMPLETE
+[19:20:44 +125.5 min] STEP 6 YouTube upload
+[19:20:53 +125.7 min]    https://youtu.be/L4Fa6C7H7p0 (schedule)
+[19:20:53 +125.7 min] === DONE in 126 min ===
