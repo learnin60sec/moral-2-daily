@@ -143,3 +143,36 @@
 [14:39:29 + 16.0 min] STOP: too few pictures today (Cloudflare limit?) - try again tomorrow
 [14:51:07 +  0.0 min] === CLOUD DAILY: 3-min video, AI clips: ALL pictures ===
 [14:51:07 +  0.0 min] STEP 1 story + voice
+[15:05:57 +  0.0 min] === CLOUD DAILY: 0-min video, AI clips: ALL pictures ===
+[15:05:57 +  0.0 min] STEP 1 story + voice
+[15:06:12 +  0.2 min]    संतुलन का तालाब: 7 pictures needed
+[15:06:12 +  0.2 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX) in the same job as the clips
+[15:06:12 +  0.2 min] STEP 3+4 key moments -> Kaggle clips
+[15:06:12 +  0.2 min]    prompt 001.png (written by story text (picture drawn on Kaggle)): Shiva walks toward the pond holding a fisherman's rod in the bright morning sun. The characters make small nat...
+[15:06:12 +  0.2 min]    prompt 002.png (written by story text (picture drawn on Kaggle)): Shiva catches many fish while the water level slowly recedes. The characters make small natural movements, gen...
+[15:06:12 +  0.2 min]    prompt 003.png (written by story text (picture drawn on Kaggle)): In the village square, villagers and children point at Shiva blaming him for the water shortage. The character...
+[15:06:12 +  0.2 min]    prompt 004.png (written by story text (picture drawn on Kaggle)): In his hut at dusk, Shiva sits thinking, "I will keep balance, catch less and clean the pond.". The characters...
+[15:06:12 +  0.2 min]    prompt 005.png (written by story text (picture drawn on Kaggle)): At night by the pond, Shiva releases the fish, removes algae and plants saplings to restore water. The charact...
+[15:06:12 +  0.2 min]    prompt 006.png (written by story text (picture drawn on Kaggle)): At dawn, villagers gather in the clearing, children and Shiva's wife smile as Shiva steps forward. The charact...
+[15:06:12 +  0.2 min]    prompt 007.png (written by story text (picture drawn on Kaggle)): They sing together, "Balance is the secret of life," celebrating the restored pond. The characters make small ...
+[15:06:12 +  0.2 min]    7 pictures will be drawn on Kaggle with ComfyUI (FLUX)
+[15:06:17 +  0.3 min]    Kaggle job started on account 1 (hasanpurjunction): 4 clips, about 80 min
+[15:06:22 +  0.4 min]    Kaggle job started on account 2 (kdlmeesho): 3 clips, about 65 min
+[15:21:40 + 15.7 min]    Kaggle working ... 0 of 2 accounts finished
+[15:51:14 + 45.3 min]    Kaggle working ... 0 of 2 accounts finished
+[16:06:31 + 60.6 min]    Kaggle working ... 0 of 2 accounts finished
+[16:21:43 + 75.8 min]    Kaggle working ... 1 of 2 accounts finished
+[16:27:57 + 82.0 min]    picture 007.png drawn on Kaggle
+[16:27:58 + 82.0 min]    picture 001.png drawn on Kaggle
+[16:27:58 + 82.0 min]    picture 003.png drawn on Kaggle
+[16:27:58 + 82.0 min]    picture 005.png drawn on Kaggle
+[16:28:06 + 82.1 min]    picture 004.png drawn on Kaggle
+[16:28:06 + 82.2 min]    picture 002.png drawn on Kaggle
+[16:28:07 + 82.2 min]    picture 006.png drawn on Kaggle
+[16:28:07 + 82.2 min]    7 AI clips received (of 7)
+[16:28:07 + 82.2 min] STEP 4b clip doctor
+[16:28:44 + 82.8 min]    CLIP DOCTOR: 006.mp4 REJECTED - melting / scene jump (similarity 0.00, jump 15) -> this page uses the living picture
+[16:28:48 + 82.8 min]    CLIP DOCTOR: 6 of 7 clips passed
+[16:28:48 + 82.8 min] STEP 5 video
+[16:31:06 + 85.1 min]    QC: CORRECTED & COMPLETE
+[16:31:06 + 85.1 min] === DONE in 85 min ===
