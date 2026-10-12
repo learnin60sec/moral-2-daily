@@ -146,31 +146,36 @@ def kaggle_cli(*args, acc=None, check=False):
 
 
 def start_job(acc, P, names, prompts, tag):
-    """upload the pictures + prompts as this account's dataset and start its Kaggle job"""
-    ds_id, k_id = f"{acc['user']}/m2-clips-job", f"{acc['user']}/m2-clips"
+    """upload this run's pictures + prompts as a NEW dataset (unique name -> Kaggle can never use an old one) and start the job"""
+    stamp = time.strftime("%Y%m%d-%H%M%S"); job_id = f"{stamp}-{tag.lower()}"
+    ds_slug = f"m2-job-{job_id}"; ds_id, k_id = f"{acc['user']}/{ds_slug}", f"{acc['user']}/m2-clips"
     jd = f"/tmp/m2_job_{tag}"; shutil.rmtree(jd, ignore_errors=True); os.makedirs(jd)
     draw = {}
     for n in names:
         src = P.p(m2.pics_dir(P), n)
         if os.path.exists(src): shutil.copy(src, os.path.join(jd, n))
         else: draw[n] = DRAW.get(n, "")
-    json.dump({"pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5}, open(os.path.join(jd, "job.json"), "w"))
-    json.dump({"title": "m2-clips-job", "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
-    r = kaggle_cli("datasets", "version", "-p", jd, "-m", time.strftime("%Y-%m-%d %H:%M"), "-r", "zip", acc=acc)
-    if r.returncode != 0: kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
-    for _ in range(30):
+    json.dump({"job_id": job_id, "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5},
+              open(os.path.join(jd, "job.json"), "w"))
+    json.dump({"title": ds_slug, "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
+    kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
+    for _ in range(45):                                               # wait until Kaggle has processed THIS dataset
         if "ready" in kaggle_cli("datasets", "status", ds_id, acc=acc).stdout.lower(): break
         time.sleep(20)
     kd = f"/tmp/m2_kernel_{tag}"; shutil.rmtree(kd, ignore_errors=True); os.makedirs(kd)
     kern = [k_ for k_ in (os.path.join(_ME, "kaggle_job", "kernel.py"), os.path.join(_ME, "kernel.py"), os.path.join(HERE, "kernel.py")) if os.path.exists(k_)]
     if not kern: raise RuntimeError("kernel.py not found next to cloud_daily.py")
-    shutil.copy(kern[0], os.path.join(kd, "kernel.py"))
+    code = open(kern[0], encoding="utf-8").read().replace('EXPECTED_JOB = None', f'EXPECTED_JOB = "{job_id}"', 1)
+    open(os.path.join(kd, "kernel.py"), "w", encoding="utf-8").write(code)
     json.dump({"id": k_id, "title": "m2-clips", "code_file": "kernel.py", "language": "python", "kernel_type": "script", "is_private": True,
                "enable_gpu": True, "enable_internet": True, "dataset_sources": [ds_id], "competition_sources": [], "kernel_sources": []},
               open(os.path.join(kd, "kernel-metadata.json"), "w"))
     kaggle_cli("kernels", "push", "-p", kd, acc=acc, check=True)
+    JOB_IDS[k_id + acc["name"]] = job_id
     return k_id
 
+
+JOB_IDS = {}
 
 DRAW = {}
 
@@ -219,6 +224,11 @@ def kaggle_clips(P, st, pages):
         for zf in glob.glob(os.path.join(od, "**", "results.zip"), recursive=True):
             with zipfile.ZipFile(zf) as z: z.extractall(os.path.join(od, "results"))
         rep = glob.glob(os.path.join(od, "**", "report.json"), recursive=True)
+        want = JOB_IDS.get(k_id + acc["name"])
+        if rep and want and json.load(open(rep[0])).get("job_id") != want:
+            say(f"   account {n_acc}: results belong to an OLD job ({json.load(open(rep[0])).get('job_id')}) - NOT used"); continue
+        if not rep:
+            say(f"   account {n_acc}: no job report -> results not trusted, NOT used"); continue
         if rep:
             r_ = json.load(open(rep[0]))
             say(f"   account {n_acc} report: pictures {len(r_.get('pictures_made', []))}/{len(r_.get('pictures_asked', []))}, "
@@ -233,10 +243,10 @@ def kaggle_clips(P, st, pages):
                 txt = open(logs[0], errors="ignore").read()
                 for line in re.findall(r'"data":"(.*?)"', txt)[-15:] or txt.splitlines()[-15:]: say(f"      Kaggle: {line[:160]}")
             except Exception: pass
-        for f in glob.glob(os.path.join(od, "**", "*.mp4"), recursive=True):
+        for f in glob.glob(os.path.join(od, "results", "*.mp4")):
             name = os.path.basename(f).split("__")[0]
             if re.fullmatch(r"\d{3}\.mp4", name): shutil.copy(f, P.p("clips", name)); got += 1
-        for f in glob.glob(os.path.join(od, "**", "*.png"), recursive=True):    # pictures drawn on Kaggle
+        for f in glob.glob(os.path.join(od, "results", "*.png")):              # pictures drawn on Kaggle (this job only)
             name = os.path.basename(f); dst = P.p(m2.pics_dir(P), name)
             if re.fullmatch(r"\d{3}\.png", name) and not os.path.exists(dst): S.clean_frame(open(f, "rb").read(), dst); say(f"   picture {name} drawn on Kaggle")
     say(f"   {got} AI clips received (of {len(pages)})"); return got
