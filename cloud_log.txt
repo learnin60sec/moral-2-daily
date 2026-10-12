@@ -89,3 +89,11 @@
 [02:37:01 +  1.0 min]    Cloudflare free amount used up at picture 1 - the video uses 0 pictures
 [02:37:01 +  1.0 min]    0 pictures made
 [02:37:01 +  1.0 min] STOP: too few pictures today (Cloudflare limit?) - try again tomorrow
+[05:57:17 +  0.0 min] === CLOUD DAILY: 3-min video, AI clips: ALL pictures ===
+[05:57:17 +  0.0 min] STEP 1 story + voice
+[05:57:31 +  0.2 min]    सूरज की पहली किरन: 0 pictures needed
+[05:57:31 +  0.2 min] STEP 2 pictures (Cloudflare)
+[05:57:31 +  0.2 min]    0 pictures made
+[05:57:31 +  0.2 min] STEP 3+4 key moments -> Kaggle clips
+[05:57:31 +  0.2 min]    0 AI clips received (of 0)
+[05:57:31 +  0.2 min] STEP 5 video
