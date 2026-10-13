@@ -50,7 +50,7 @@ def story(minutes=4.0):
             "reveal at the end and one short lesson. Family-friendly suspense only: no gore, no horror, no violence shown, nothing too scary for children"
             if MYSTERY else "Hindi moral story")
     look_txt = "realistic cinematic" if REALISTIC else "2D cartoon"
-    d = S.ask(f"""Write the {kind} "{idea['title']}" ({json.dumps(idea, ensure_ascii=False)}) for a {minutes:.0f}-minute narrated
+    d = S.ask_writer(f"""Write the {kind} "{idea['title']}" ({json.dumps(idea, ensure_ascii=False)}) for a {minutes:.0f}-minute narrated
 {look_txt} video told by ONE storyteller{' with a gripping, suspenseful voice' if MYSTERY else ' with a warm voice'}. About {words} Hindi words in total, split into EXACTLY {n_beats} consecutive parts.
 Write it to be READ ALOUD in one smooth take: flowing sentences, natural Hindi, feelings shown through the words and punctuation
 (! ? , and dialogue in quotes) - never use '...' or line breaks inside a part.
@@ -58,6 +58,27 @@ JSON only: {{"title": "...", "moral": "one short Hindi sentence", "moral_tone": 
 "characters": [{{"name": "...", "look": "ONE fixed {'realistic appearance' if REALISTIC else '2D cartoon design'} in English: age, body, face, hair, skin tone, exact clothes with colours"}}],
 "beats": [{{"narration": "Hindi text of this part", "place": "English: place + time of day + light{' (mysterious mood)' if MYSTERY else ''}"}}]}}""")
     beats = [b for b in d.get("beats", []) if isinstance(b, dict) and b.get("narration")]
+    if beats and os.getenv("M2_STORY_EDITOR", "1") == "1":           # a second pass by an "editor" makes the story clearly better
+        say("  story editor: hook, clues, logic, natural Hindi ...")
+        try:
+            e = S.ask_writer(f"""You are the chief editor of a hit Hindi {'children-and-family MYSTERY' if MYSTERY else 'family moral story'} YouTube channel.
+Improve this story so families watch till the end. Rules:
+1. The FIRST part must hook in the first two sentences (a question, a strange event or a surprise).
+2. Every part must move the story forward; cut repetition and filler; vivid, simple, natural spoken Hindi with short dialogues in quotes.
+3. {'Plant 3 fair clues the viewer can notice before the reveal, include one false suspect, and make the reveal surprising but LOGICAL (no real ghosts or magic).' if MYSTERY else 'Clear conflict, emotional turning point and a satisfying ending.'}
+4. Keep the SAME title, characters (names and looks), places and EXACTLY {len(beats)} parts, each about the same length as now. No '...', no line breaks.
+5. Family-friendly: no horror, no gore, no violence shown.
+Return the improved story in EXACTLY the same JSON shape.
+STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_tone": d.get("moral_tone"), "characters": d.get("characters"), "beats": beats}, ensure_ascii=False)}""", temperature=0.7)
+            eb = [b for b in e.get("beats", []) if isinstance(b, dict) and b.get("narration")]
+            old_len = sum(len(b["narration"]) for b in beats); new_len = sum(len(b["narration"]) for b in eb)
+            if len(eb) == len(beats) and 0.75 * old_len <= new_len <= 1.5 * old_len:
+                for ob, nb in zip(beats, eb): nb.setdefault("place", ob.get("place", ""))
+                beats = eb; d["moral"] = e.get("moral") or d.get("moral"); say("  story editor: improved version used")
+            else:
+                say(f"  story editor: answer did not keep the shape ({len(eb)} parts, length {new_len} vs {old_len}) - first version kept")
+        except SystemExit:
+            say("  story editor: no answer - first version kept")
     for b in beats:
         t = re.sub(r"\s*(\.{2,}|…)\s*", ", ", str(b["narration"]))          # '...' makes the voice stop -> comma
         b["narration"] = re.sub(r"\s+", " ", t).replace(", ,", ",").strip()
@@ -110,9 +131,12 @@ STYLE_PACK = os.getenv("M2_STYLE", "2d_moral").lower()
 REALISTIC = STYLE_PACK.startswith("realistic"); MYSTERY = "mystery" in STYLE_PACK
 STYLE_REAL = ("Style: cinematic photorealistic film still, shot on a 35mm cinema camera, realistic Indian people and real locations, natural skin "
               "texture, dramatic moody lighting with soft shadows, shallow depth of field, subtle film grain, rich but natural colours, high detail. "
-              "Wide 16:9 landscape frame, the whole head of every person inside the frame. No text, no letters, no numbers, no captions, no watermark. "
+              "Wide 16:9 landscape frame filling the whole picture edge to edge (no black bars, no letterbox, no border), the whole head of every "
+              "person inside the frame. No text, no letters, no numbers, no captions, no watermark. "
               "Not a cartoon, not anime, not an illustration, not a painting.")
-STYLE_FULL = ("Style: premium hand-drawn 2D cartoon illustration for an Indian village moral story, clean ink outlines, flat painted colours, "
+STYLE_FULL = ("Picture fills the whole frame edge to edge, no black bars, no letterbox, no border. "
+              "Style: richly detailed storybook illustration in premium hand-drawn 2D cartoon style, fine ink linework, textured hand-painted backgrounds with lots of small details (grass blades, soil, leaves, wood grain, cloth folds), warm natural light, "
+              "premium hand-drawn 2D cartoon illustration for an Indian village moral story, clean ink outlines, flat painted colours, "
               "soft cel shading, expressive cartoon faces, detailed illustrated rural Indian village background, warm cinematic light. "
               "Wide 16:9 landscape frame, characters full body with the whole head inside the frame. "
               "No text, no letters, no numbers, no captions, no speech bubbles. Not 3D, not photo-realistic.")
@@ -1111,7 +1135,8 @@ def pick_music(P, seconds, tone):
     if files:
         words = {"happy": ("happy", "joy", "bright", "khush"), "sad": ("sad", "emotional", "slow", "dukh"), "serious": ("calm", "soft", "serious")}[tone]
         if MYSTERY: words = ("mystery", "suspense", "dark") + words
-        good = [f for f in files if any(w in os.path.basename(f).lower() for w in words)] or files
+        groups = ([("mystery", "suspense", "dark")] if MYSTERY else []) + [words]      # the first group that has a file wins
+        good = next((g for g in ([f for f in files if any(w in os.path.basename(f).lower() for w in grp)] for grp in groups) if g), files)
         return good[hash(P.dir) % len(good)], "from the music folder"
     return make_music(P.p("work_music.wav"), seconds, tone), "made by the script (no copyright)"
 
@@ -1251,7 +1276,7 @@ class ClipFrames:
     def get(self, path, k):
         import numpy as np
         if path != self.path:
-            raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-i", path, "-vf", "scale=1280:720,fps=24", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+            raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-i", path, "-vf", "scale=1280:720:flags=lanczos,fps=24", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
                                  capture_output=True).stdout
             self.frames = np.frombuffer(raw, np.uint8).reshape(-1, 720, 1280, 3) if raw else []
             self.path = path
@@ -1363,9 +1388,9 @@ def video(subtitles=True):
     say("[VIDEO 3/5] Drawing the video (progress every 15 s of film) ...")
     out_v = P.p("work_video.mp4"); fps = int(os.getenv("M2_FPS", "30")); n = int(total * fps)
     enc = subprocess.Popen([ff, "-y", "-v", "quiet", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", "1280x720", "-r", str(fps), "-i", "-",
-                            "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "20", "-preset", "veryfast", out_v], stdin=subprocess.PIPE)
+                            "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "16", "-preset", "fast", out_v], stdin=subprocess.PIPE)
     pi, dark, t_start = 0, 0, time.time()
-    logo = corner_logo()
+    logo = None if os.getenv("M2_1080", "1") == "1" else corner_logo()   # at 1080p the logo is added later, sharp, at full size
     if logo is not None: say("  channel logo in the top-right corner")
     clipper, clipper2 = ClipFrames(), ClipFrames()
     n_clips = len({os.path.basename(f) for _, _, f, _ in plan if clip_for(P, f)})
@@ -1433,7 +1458,28 @@ def video(subtitles=True):
             say("  [fixed] music was too loud for the voice - mixing again with softer music")
             fc = fc.replace(f"volume={vol}", f"volume={vol / 2:.3f}")
             subprocess.run([ff, "-y", "-v", "quiet"] + ins + ["-filter_complex", fc, "-map", "[aout]", "-t", f"{total:.2f}", "-ac", "1", full_a], check=True)
-    subprocess.run([ff, "-y", "-v", "quiet", "-i", out_v, "-i", full_a, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+    look = os.getenv("M2_FILM_LOOK", "none").lower(); hd = os.getenv("M2_1080", "1") == "1"
+    chain = []
+    if look == "90s":                                             # classic 90s TV cartoon feel: on twos, warm faded colours, grain, flicker, vignette
+        say("  film look: 90s classic")
+        chain.append("fps=12,fps=" + str(fps) + ",eq=eval=frame:saturation=1.12:contrast=0.93:gamma=1.04:brightness='0.012*sin(17*t)+0.008*sin(5*t)',"
+                     "colorbalance=rs=0.06:gs=0.02:bs=-0.07:rm=0.04:bm=-0.05,gblur=sigma=0.7,"
+                     "crop=w=iw-8:h=ih-8:x='4+2*sin(9*t)':y='4+2*cos(7*t)',scale=1280:720,noise=alls=10:allf=t+u,vignette=angle=PI/4.5")
+    logo_png = os.path.join(HERE, "CORNER_LOGO.png")
+    if hd:                                                        # YouTube keeps much more detail from a 1080p upload
+        chain.append("scale=1920:1080:flags=lanczos,unsharp=5:5:0.55:5:5:0.0")
+        say("  output: 1080p (sharp scaling)" + (" + sharp channel logo" if os.path.exists(logo_png) and os.getenv("M2_LOGO", "1") != "0" else ""))
+    vin = ["-i", out_v]; vmap = "0:v"; fc_v = None
+    if hd and os.path.exists(logo_png) and os.getenv("M2_LOGO", "1") != "0":
+        lw = int(float(os.getenv("M2_LOGO_WIDTH", "180")) * 1.5); op_ = float(os.getenv("M2_LOGO_OPACITY", "0.9"))
+        fc_v = (f"[0:v]{','.join(chain)}[base];[1:v]scale={lw}:-1:flags=lanczos,format=rgba,colorchannelmixer=aa={op_}[lg];"
+                f"[base][lg]overlay=W-w-21:18,format=yuv420p[v]")
+        vin += ["-i", logo_png]; vmap = "[v]"
+    elif chain:
+        fc_v = f"[0:v]{','.join(chain)},format=yuv420p[v]"; vmap = "[v]"
+    vcodec = ["-c:v", "copy"] if not fc_v else ["-filter_complex", fc_v, "-c:v", "libx264", "-preset", "medium", "-crf", "17"]
+    ai = len(vin) // 2
+    subprocess.run([ff, "-y", "-v", "quiet"] + vin + ["-i", full_a] + vcodec + ["-map", vmap, "-map", f"{ai}:a", "-c:a", "aac", "-b:a", "160k",
                     "-shortest", out], check=True)
     os.remove(full_a)
     os.remove(out_v)
@@ -1487,11 +1533,11 @@ def burn_subs(P, st, bt, video_path, TI=0.0, story_len=None, TO=0.0):
     ass = P.p("subs.ass"); open(ass, "w", encoding="utf-8").write("\n".join(L))
     tmp = video_path.replace(".mp4", "_s.mp4"); esc = lambda p: p.replace("\\", "/").replace(":", "\\:")
     r = subprocess.run([S.ffmpeg(), "-y", "-v", "error", "-i", video_path, "-vf", f"ass='{esc(ass)}':fontsdir='{esc(fontsdir)}':shaping=complex",
-                        "-c:v", "libx264", "-crf", "20", "-c:a", "copy", tmp], capture_output=True, text=True)
+                        "-c:v", "libx264", "-crf", "17", "-preset", "medium", "-c:a", "copy", tmp], capture_output=True, text=True)
     if r.returncode != 0:                                        # FIX AT ONCE: try again without the font folder
         say("  [fixed] subtitles failed once - trying again")
         r = subprocess.run([S.ffmpeg(), "-y", "-v", "error", "-i", video_path, "-vf", f"ass='{esc(ass)}':shaping=complex",
-                            "-c:v", "libx264", "-crf", "20", "-c:a", "copy", tmp], capture_output=True, text=True)
+                            "-c:v", "libx264", "-crf", "17", "-preset", "medium", "-c:a", "copy", tmp], capture_output=True, text=True)
     if r.returncode == 0: os.replace(tmp, video_path); say("  title, Hindi subtitles and moral written on the video")
     else: say("  (subtitles could not be added: " + (r.stderr or "")[-150:] + ")")
 

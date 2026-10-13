@@ -86,6 +86,37 @@ def ask(prompt):
     sys.exit("STOPPED: no text AI answered (set GROQ_API_KEY or GEMINI_API_KEY, or wait for the free limit to reset)")
 
 
+def ask_writer(prompt, temperature=0.9):
+    """the BEST writer for stories: Gemini 2.5 Pro -> Gemini Flash -> GPT-OSS-120B -> the normal ask(). JSON answers only."""
+    import requests
+    key = os.getenv("GEMINI_API_KEY")
+    if key:
+        for n in [m for m in (os.getenv("M2_WRITER_MODEL", "gemini-2.5-pro"), "gemini-pro-latest", "gemini-flash-latest", "gemini-2.5-flash") if m and m not in _DEAD]:
+            try:
+                r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{n}:generateContent", headers={"x-goog-api-key": key}, timeout=300,
+                                  json={"contents": [{"parts": [{"text": prompt}]}],
+                                        "generationConfig": {"responseMimeType": "application/json", "temperature": temperature}})
+                if r.status_code == 200:
+                    d = parse(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+                    if d: print(f"  (written by {n})"); return d
+                elif r.status_code in (400, 403, 404): _DEAD.add(n)
+            except Exception:
+                pass
+    gk = os.getenv("GROQ_API_KEY")
+    if gk:
+        for model in ("openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct"):
+            try:
+                r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {gk}"}, timeout=300,
+                                  json={"model": model, "messages": [{"role": "user", "content": prompt}], "temperature": temperature,
+                                        "response_format": {"type": "json_object"}})
+                if r.status_code == 200:
+                    d = parse(r.json()["choices"][0]["message"]["content"])
+                    if d: print(f"  (written by {model})"); return d
+            except Exception:
+                pass
+    return ask(prompt)
+
+
 def youtube_views(title):
     """total views of the 10 most-viewed similar Hindi moral-story videos of the last 90 days (YOUTUBE_API_KEY)"""
     import requests, datetime
@@ -134,7 +165,17 @@ def used_stories():
 def stage1(P, auto=False):
     used = used_stories()
     avoid = ("\nDo NOT repeat or closely resemble these stories already made: " + "; ".join(used[-80:])) if used else ""
-    d = ask(avoid + """\nYou are a professional Hindi moral story writer. Generate exactly 15 ORIGINAL, family-friendly Hindi moral story ideas set in
+    if "mystery" in os.getenv("M2_STYLE", "").lower():
+        d = ask_writer(avoid + """\nYou are a top Hindi children's mystery writer (like a village Byomkesh or Feluda for kids). Generate exactly 15 ORIGINAL,
+family-friendly Hindi MYSTERY cartoon story ideas set in an Indian village or small town, for children AND parents. Each idea: a strange happening
+in the first lines (a missing goat, a light moving in the old haveli at night, strange footprints in the field, the school bell ringing by itself,
+grain vanishing from the store...), a clever child or wise elder who investigates, 3 fair clues the viewer can notice, one false suspect,
+a surprising but LOGICAL reveal (no real ghosts or magic - everything has a clever explanation), a warm ending and one short lesson.
+No horror, no gore, no violence, nothing frightening for small children. Write in Hindi (Devanagari).
+JSON only: {"ideas": [{"no": 1, "title": "...", "characters": "...", "concept": "...", "conflict": "...", "twist": "...", "moral": "...", "score": 1-10}]}
+"score" = how strongly this idea would make a family click and watch till the end on YouTube.""")
+    else:
+        d = ask_writer(avoid + """\nYou are a professional Hindi moral story writer. Generate exactly 15 ORIGINAL, family-friendly Hindi moral story ideas set in
 an Indian village (genre like: two bullocks of Raju, poor farmer and greedy moneylender, two brothers' partition, old farmer's last wish,
 hard-working farmer and lazy son - genre only, do not copy plots). Each idea: interesting opening, relatable village characters, central
 conflict, emotional development, turning point, logical ending, clear moral, enough depth for 15-20 minutes. Write in Hindi (Devanagari).

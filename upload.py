@@ -192,8 +192,9 @@ def upload_m2(P, slot=0):
     text = None
     try:
         import m2 as _m2
-        kind_ = ("Hindi realistic cinematic MYSTERY story video (ends with | Mystery Story in Hindi instead of | Hindi Kahani)" if _m2.MYSTERY
-                 else "Hindi 2D cartoon moral story video")
+        kind_ = (("Hindi realistic cinematic" if _m2.REALISTIC else "Hindi 2D cartoon") + " MYSTERY story video for families "
+                 "(the title ends with | Mystery Story in Hindi instead of | Hindi Kahani; the title makes people curious WITHOUT revealing the answer)"
+                 if _m2.MYSTERY else "Hindi 2D cartoon moral story video")
         text = S.ask(f"""Write YouTube text for a {kind_}. Title: "{st.get('title', '')}". Moral: "{st.get('moral', '')}".
 Story start: {' '.join(b['narration'] for b in st.get('beats', [])[:3])[:900]}
 JSON only: {{"title": "Hindi title under 70 characters, curious but honest, ending with | Hindi Kahani", "description": "Hindi, 5-7 lines:

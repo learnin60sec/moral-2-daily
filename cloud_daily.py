@@ -135,7 +135,11 @@ def kaggle_accounts():
     return out
 
 
-CLIP_MIN = float(os.getenv("M2_MIN_PER_CLIP", "17.5")); SETUP_MIN = 17.0
+CLIP_MIN = float(os.getenv("M2_MIN_PER_CLIP", "17.5"))
+IMAGE_MODEL = os.getenv("M2_IMAGE_MODEL", "kontext").lower()          # kontext = same characters on every page (slower) | schnell = fast
+IMG_MIN = 4.0 if IMAGE_MODEL == "kontext" else 0.6                  # minutes per picture on a Kaggle T4
+SETUP_MIN = 25.0 if IMAGE_MODEL == "kontext" else 17.0
+PAGE_MIN = CLIP_MIN + IMG_MIN
 WEEK_BUDGET = float(os.getenv("M2_KAGGLE_WEEKLY_MIN", "1740"))      # 29 of the 30 free hours (1 hour safety)
 LEDGER = os.path.join(HERE, "kaggle_usage.json")
 
@@ -163,7 +167,7 @@ def room_today(acc, d):
     if acc["user"] in d.get("full", []): return 0
     left = WEEK_BUDGET - d["used_min"].get(acc["user"], 0.0) - SETUP_MIN
     per_run = float(os.getenv("M2_KAGGLE_MINUTES", "300")) - SETUP_MIN - 15
-    return max(0, int(min(left, per_run) // CLIP_MIN))
+    return max(0, int(min(left, per_run) // PAGE_MIN))
 
 
 def kaggle_cli(*args, acc=None, check=False):
@@ -192,7 +196,7 @@ def start_job(acc, P, names, prompts, tag, draw_only=()):
     size = [int(v) for v in os.getenv("M2_CLIP_SIZE", "832x480").lower().split("x")]
     negative = ("cartoon, anime, 2D, illustration, painting, CGI, plastic skin, waxy face, deformed hands, extra fingers, new people appearing, "
                 "objects turning into something else, morphing, distorted face, changing clothes, fast camera shake, text, watermark, flicker, blurry") if m2.REALISTIC else ""
-    json.dump({"job_id": job_id, "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size, "negative": negative},
+    json.dump({"job_id": job_id, "image_model": IMAGE_MODEL, "cast_prompt": CAST_PROMPT.get("text", ""), "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size, "negative": negative},
               open(os.path.join(jd, "job.json"), "w"))
     json.dump({"title": ds_slug, "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
     kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
@@ -215,9 +219,20 @@ def start_job(acc, P, names, prompts, tag, draw_only=()):
 JOB_IDS = {}
 
 DRAW = {}
+CAST_PROMPT = {}
+
+
+def cast_prompt(st):
+    """one picture with every main character side by side - the reference FLUX Kontext keeps on every page"""
+    looks = st.get("characters", {})
+    people = "; ".join(f"{n}: {l}" for n, l in list(looks.items())[:5]) or "the main character"
+    return (f"Character reference sheet for one story. These characters, each drawn ONCE: {people}. All of them standing side by side in one row, "
+            "full body, front view, friendly calm faces, clearly separated, on a plain soft light-coloured background with nothing else. "
+            + (m2.STYLE_REAL if m2.REALISTIC else m2.STYLE_FULL))
 
 
 def kaggle_clips(P, st, pages):
+    CAST_PROMPT["text"] = cast_prompt(st)
     accs = kaggle_accounts()
     if not accs: say("no Kaggle keys -> video without AI clips"); return 0
     prompts = {}; looks = st.get("characters", {})
@@ -246,16 +261,19 @@ def kaggle_clips(P, st, pages):
         if not open_: break
         a = max(open_, key=lambda x: room[x["name"]] - len(share[x["name"]])); share[a["name"]].append(pending.pop(0))
     if pending:
-        say(f"   no Kaggle time left for {len(pending)} pages -> they stay living pictures (their pictures are still drawn)")
-        drawer = max(accs, key=lambda x: room[x["name"]] - len(share[x["name"]]))
-        draw_only[drawer["name"]] = [n for n in pending if n in DRAW]
+        say(f"   no Kaggle time left for {len(pending)} pages -> they stay living pictures (their pictures are still drawn where time allows)")
+        spare = {a["name"]: max(0.0, (room[a["name"]] - len(share[a["name"]])) * PAGE_MIN + PAGE_MIN * 0.9) for a in accs}
+        for n_ in [x for x in pending if x in DRAW]:
+            a = max(accs, key=lambda x: spare[x["name"]])
+            if spare[a["name"]] < IMG_MIN: break
+            draw_only[a["name"]].append(n_); spare[a["name"]] -= IMG_MIN
     for n, acc in enumerate(accs):
         mine, extra = share[acc["name"]], draw_only[acc["name"]]
         if not mine and not extra: continue
         try:
             jobs.append((acc, start_job(acc, P, mine, prompts, acc["name"], extra), mine))
             say(f"   Kaggle job started on account {n + 1} ({acc['user']}): {len(mine)} clips" + (f" + {len(extra)} pictures only" if extra else "")
-                + f", about {int(len(mine) * CLIP_MIN + SETUP_MIN)} min")
+                + f", pictures by {IMAGE_MODEL}, about {int(len(mine) * PAGE_MIN + len(extra) * IMG_MIN + SETUP_MIN)} min")
         except Exception as e:
             say(f"   account {n + 1} could not start: {str(e)[:200]}")
     limit = time.time() + 60 * float(os.getenv("M2_KAGGLE_MINUTES", "300")); done = {}

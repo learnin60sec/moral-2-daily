@@ -24,26 +24,71 @@ if JOB.get('negative'): WF['10']['inputs']['text'] = JOB['negative']            
 json.dump(WF, open('/kaggle/working/workflow_api.json', 'w'))
 RUNNER_TEXT = '"""Runs a ComfyUI workflow (API format) for every picture. Used by the Kaggle notebook; also testable with any ComfyUI URL."""\nimport os, sys, json, time, glob, shutil, subprocess, copy\nimport requests\nCOMFY = os.getenv("COMFY_DIR", "/tmp/ComfyUI"); URL = os.getenv("COMFY_URL", "http://127.0.0.1:8188")\nOUT = os.getenv("OUT_DIR", "/kaggle/working/outputs"); T0 = time.time()\ndef say(x): print(f"[{time.time() - T0:6.0f} s] {x}", flush=True)\n\n\ndef start_comfy():\n    if os.getenv("COMFY_ALREADY_RUNNING") == "1": return None\n    log = open("/kaggle/working/comfy_log.txt" if os.path.isdir("/kaggle/working") else "/tmp/comfy_log.txt", "w")\n    p = subprocess.Popen([sys.executable, "main.py", "--listen", "127.0.0.1", "--port", "8188", "--disable-auto-launch", "--preview-method", "none"],\n                         cwd=COMFY, stdout=log, stderr=subprocess.STDOUT)\n    say("starting ComfyUI ...")\n    for _ in range(240):\n        try:\n            requests.get(f"{URL}/system_stats", timeout=3); say("ComfyUI is ready"); return p\n        except Exception:\n            if p.poll() is not None: sys.exit("ComfyUI stopped while starting - see comfy_log.txt")\n            time.sleep(2)\n    sys.exit("ComfyUI did not start in 8 minutes - see comfy_log.txt")\n\n\ndef run_one(wf, label):\n    t = time.time()\n    r = requests.post(f"{URL}/prompt", json={"prompt": wf, "client_id": "kaggle"}, timeout=60)\n    if r.status_code != 200: say(f"  {label}: ComfyUI refused the workflow: {r.text[:800]}"); return []\n    pid = r.json()["prompt_id"]; say(f"  {label}: queued (job {pid[:8]})")\n    last = 0\n    while True:\n        time.sleep(5)\n        try: h = requests.get(f"{URL}/history/{pid}", timeout=30).json()\n        except Exception: say("  ComfyUI stopped answering (out of memory?) - see comfy_log.txt"); return []\n        if pid in h: break\n        if time.time() - last > 30: say(f"  {label}: working ... {time.time() - t:.0f} s"); last = time.time()\n    h = h[pid]; st = h.get("status", {})\n    if st.get("status_str") == "error":\n        msgs = [m for m in st.get("messages", []) if m[0] == "execution_error"]\n        say(f"  {label}: ERROR {json.dumps(msgs)[:800]}"); return []\n    files = []\n    for node_out in h.get("outputs", {}).values():\n        for key in ("images", "gifs", "videos", "video"):\n            for f in node_out.get(key, []) or []:\n                if isinstance(f, dict) and f.get("filename"):\n                    src = os.path.join(COMFY, f.get("type", "output"), f.get("subfolder", ""), f["filename"])\n                    if os.path.exists(src): files.append(src)\n    say(f"  {label}: done in {time.time() - t:.0f} s, {len(files)} output file(s)")\n    return files\n\n\ndef to_mp4(webp, fps=None):\n    """animated WEBP from ComfyUI -> MP4 next to it, at the clip\'s real speed (every frame\'s own duration is respected)"""\n    try:\n        from PIL import Image, ImageSequence\n        import imageio_ffmpeg\n        im = Image.open(webp); frames, durs = [], []\n        for f in ImageSequence.Iterator(im):\n            frames.append(f.convert("RGB")); durs.append(max(1, f.info.get("duration") or im.info.get("duration") or 42))\n        if len(frames) < 2: return\n        out_fps = 24; total = sum(durs) / 1000.0; n_out = max(2, round(total * out_fps))\n        starts = [sum(durs[:k]) / 1000.0 for k in range(len(durs))]\n        w, h = frames[0].size; w, h = w - w % 2, h - h % 2\n        p = subprocess.Popen([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-v", "quiet", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(out_fps), "-i", "-",\n                              "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "18", webp[:-5] + ".mp4"], stdin=subprocess.PIPE)\n        k = 0\n        for j in range(n_out):\n            t = j / out_fps\n            while k + 1 < len(starts) and starts[k + 1] <= t: k += 1\n            p.stdin.write(frames[k].crop((0, 0, w, h)).tobytes())\n        p.stdin.close(); p.wait(); say(f"  made {os.path.basename(webp)[:-5]}.mp4 ({total:.1f} s)")\n    except Exception as e:\n        say(f"  (mp4 not made: {str(e)[:80]})")\n\n\ndef main():\n    S = json.load(open(os.getenv("SETTINGS", "/kaggle/working/settings.json")))\n    wf0 = json.load(open(S["workflow"]))\n    loaders = [k for k, n in wf0.items() if n.get("class_type") in ("LoadImage", "LoadImageMask", "VHS_LoadImagePath")]\n    texts = [k for k, n in wf0.items() if n.get("class_type") in ("CLIPTextEncode", "TextEncodeHunyuanVideo_ImageToVideo") or "prompt" in str(n.get("_meta", {}).get("title", "")).lower()]\n    say(f"workflow: {len(wf0)} nodes | picture inputs: {loaders or \'none\'} | text prompts: {texts or \'none\'}")\n    proc = start_comfy()\n    os.makedirs(OUT, exist_ok=True); os.makedirs(os.path.join(COMFY, "input"), exist_ok=True)\n    pics = S.get("pictures") or [None]\n    for i, pic in enumerate(pics, 1):\n        wf = copy.deepcopy(wf0); label = f"{i}/{len(pics)} {os.path.basename(pic) if pic else \'run\'}"\n        if pic:\n            name = f"in_{i:03d}_{os.path.basename(pic)}"; shutil.copy(pic, os.path.join(COMFY, "input", name))\n            for k in loaders: wf[k]["inputs"]["image"] = name\n        ptxt = (S.get("prompts") or [None] * len(pics))[i - 1] or S.get("prompt")\n        if ptxt and texts:\n            k = texts[0]\n            for field in ("text", "prompt", "positive_prompt"):\n                if field in wf[k]["inputs"] and isinstance(wf[k]["inputs"][field], str): wf[k]["inputs"][field] = ptxt; break\n            say(f"  {label}: prompt = {ptxt[:90]}...")\n        for f in run_one(wf, label):\n            base = os.path.splitext(os.path.basename(pic))[0] if pic else "run"\n            dst = os.path.join(OUT, f"{base}__{os.path.basename(f)}"); shutil.copy(f, dst)\n            if dst.lower().endswith(".webp"): to_mp4(dst)\n    shutil.make_archive(OUT, "zip", OUT)\n    say(f"ALL DONE -> {OUT}.zip  ({len(os.listdir(OUT))} files)")\n    if proc: proc.terminate()\n\n\nif __name__ == "__main__":\n    main()\n'
 
-# ---------- PICTURE BACKUP: pages Cloudflare could not draw are drawn here with FLUX schnell (official ComfyUI template settings)
+# ---------- PICTURES: drawn here with ComfyUI. image_model "schnell" = FLUX schnell (fast) | "kontext" = FLUX Kontext (same characters on every page)
 MAKE = JOB.get('make_pictures', {})
 MADE = '/kaggle/working/clips'; os.makedirs(MADE, exist_ok=True)
+def KEEP(path, name):
+    """save a drawn picture as NNN.png; black bars drawn by the model are cut away and the 16:9 frame is filled again"""
+    from PIL import Image as _I
+    import numpy as _np
+    im_ = _I.open(path).convert('RGB'); a_ = _np.asarray(im_.convert('L')).astype(float)
+    def _edge(lines):                                               # outer lines that are a flat dark bar (dark AND without detail)
+        n_ = 0
+        for ln in lines:
+            if ln.mean() < 45 and ln.std() < 9: n_ += 1
+            else: break
+        return n_
+    t_, b_, l_, r_ = _edge(a_), _edge(a_[::-1]), _edge(a_.T), _edge(a_.T[::-1])
+    if max(t_, b_, l_, r_) > 6:
+        im_ = im_.crop((l_, t_, im_.width - r_, im_.height - b_)); W_, H_ = 1344, 768
+        sc_ = max(W_ / im_.width, H_ / im_.height); im_ = im_.resize((int(im_.width * sc_ + 1), int(im_.height * sc_ + 1)), _I.LANCZOS)
+        x_, y_ = (im_.width - W_) // 2, (im_.height - H_) // 2; im_ = im_.crop((x_, y_, x_ + W_, y_ + H_))
+        say(f'   {name}: black bars removed ({t_}/{b_}/{l_}/{r_} px)')
+    im_.save(os.path.join(MADE, name)); say(f'   drew {name}')
 if MAKE:
-    say(f'drawing {len(MAKE)} missing pictures with FLUX ...')
+    KONTEXT = JOB.get('image_model') == 'kontext'
+    say(f"drawing {len(MAKE)} pictures with {'FLUX Kontext (same characters)' if KONTEXT else 'FLUX schnell'} ...")
     from huggingface_hub import hf_hub_download as _dl
-    os.makedirs(f'{C}/models/checkpoints', exist_ok=True)
-    fx = f'{C}/models/checkpoints/flux1-schnell-fp8.safetensors'
-    if not os.path.exists(fx): shutil.move(_dl('Comfy-Org/flux1-schnell', 'flux1-schnell-fp8.safetensors', local_dir='/tmp/hf'), fx)
+    if KONTEXT:
+        need_ = [('Comfy-Org/flux1-kontext-dev_ComfyUI', 'split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors', 'diffusion_models'),
+                 ('comfyanonymous/flux_text_encoders', 'clip_l.safetensors', 'text_encoders'),
+                 ('comfyanonymous/flux_text_encoders', 't5xxl_fp8_e4m3fn_scaled.safetensors', 'text_encoders'),
+                 ('Comfy-Org/Lumina_Image_2.0_Repackaged', 'split_files/vae/ae.safetensors', 'vae')]
+    else:
+        need_ = [('Comfy-Org/flux1-schnell', 'flux1-schnell-fp8.safetensors', 'checkpoints')]
+    PIC_FILES = []
+    for repo_, path_, folder_ in need_:
+        dst_ = f'{C}/models/{folder_}/{os.path.basename(path_)}'; os.makedirs(os.path.dirname(dst_), exist_ok=True)
+        if not os.path.exists(dst_): shutil.move(_dl(repo_, path_, local_dir='/tmp/hf'), dst_)
+        PIC_FILES.append(dst_)
     open('/kaggle/working/run_comfy.py', 'w').write(RUNNER_TEXT); sys.path.insert(0, '/kaggle/working')
     os.environ.update(COMFY_DIR=C, OUT_DIR='/kaggle/working/flux_out')
     import importlib, run_comfy as R; importlib.reload(R)
     proc = R.start_comfy()
-    FW = json.loads(r'''{"1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "flux1-schnell-fp8.safetensors"}}, "2": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["1", 1], "text": "x"}}, "3": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["1", 1], "text": ""}}, "4": {"class_type": "EmptySD3LatentImage", "inputs": {"width": 1344, "height": 768, "batch_size": 1}}, "5": {"class_type": "KSampler", "inputs": {"model": ["1", 0], "seed": 7, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "denoise": 1.0}}, "6": {"class_type": "VAEDecode", "inputs": {"samples": ["5", 0], "vae": ["1", 2]}}, "7": {"class_type": "SaveImage", "inputs": {"images": ["6", 0], "filename_prefix": "page"}}}''')
-    for n, (name, prompt) in enumerate(sorted(MAKE.items()), 1):
-        w = json.loads(json.dumps(FW)); w['2']['inputs']['text'] = prompt; w['5']['inputs']['seed'] = 1000 + n
-        files = R.run_one(w, f'picture {n}/{len(MAKE)} {name}')
-        if files: shutil.copy(files[0], os.path.join(MADE, name)); say(f'   drew {name}')
+    if KONTEXT:
+        KW = json.loads(r'''{"1": {"class_type": "UNETLoader", "inputs": {"unet_name": "flux1-dev-kontext_fp8_scaled.safetensors", "weight_dtype": "default"}}, "2": {"class_type": "DualCLIPLoader", "inputs": {"clip_name1": "clip_l.safetensors", "clip_name2": "t5xxl_fp8_e4m3fn_scaled.safetensors", "type": "flux", "device": "default"}}, "3": {"class_type": "VAELoader", "inputs": {"vae_name": "ae.safetensors"}}, "4": {"class_type": "LoadImage", "inputs": {"image": "cast.png"}}, "5": {"class_type": "FluxKontextImageScale", "inputs": {"image": ["4", 0]}}, "6": {"class_type": "VAEEncode", "inputs": {"pixels": ["5", 0], "vae": ["3", 0]}}, "7": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": "x"}}, "8": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["7", 0], "latent": ["6", 0]}}, "9": {"class_type": "FluxGuidance", "inputs": {"conditioning": ["8", 0], "guidance": 2.5}}, "10": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["7", 0]}}, "11": {"class_type": "EmptySD3LatentImage", "inputs": {"width": 1344, "height": 768, "batch_size": 1}}, "12": {"class_type": "KSampler", "inputs": {"model": ["1", 0], "seed": 7, "steps": 20, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "positive": ["9", 0], "negative": ["10", 0], "latent_image": ["11", 0], "denoise": 1.0}}, "13": {"class_type": "VAEDecode", "inputs": {"samples": ["12", 0], "vae": ["3", 0]}}, "14": {"class_type": "SaveImage", "inputs": {"images": ["13", 0], "filename_prefix": "page"}}}''')
+        CW = json.loads(r'''{"1": {"class_type": "UNETLoader", "inputs": {"unet_name": "flux1-dev-kontext_fp8_scaled.safetensors", "weight_dtype": "default"}}, "2": {"class_type": "DualCLIPLoader", "inputs": {"clip_name1": "clip_l.safetensors", "clip_name2": "t5xxl_fp8_e4m3fn_scaled.safetensors", "type": "flux", "device": "default"}}, "3": {"class_type": "VAELoader", "inputs": {"vae_name": "ae.safetensors"}}, "7": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": "x"}}, "9": {"class_type": "FluxGuidance", "inputs": {"conditioning": ["7", 0], "guidance": 3.5}}, "10": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["7", 0]}}, "11": {"class_type": "EmptySD3LatentImage", "inputs": {"width": 1344, "height": 768, "batch_size": 1}}, "12": {"class_type": "KSampler", "inputs": {"model": ["1", 0], "seed": 2024, "steps": 20, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "positive": ["9", 0], "negative": ["10", 0], "latent_image": ["11", 0], "denoise": 1.0}}, "13": {"class_type": "VAEDecode", "inputs": {"samples": ["12", 0], "vae": ["3", 0]}}, "14": {"class_type": "SaveImage", "inputs": {"images": ["13", 0], "filename_prefix": "cast"}}}''')
+        cw = json.loads(json.dumps(CW)); cw['7']['inputs']['text'] = JOB.get('cast_prompt', '')
+        files = R.run_one(cw, 'cast sheet')
+        if not files: sys.exit('STOP: the cast sheet could not be drawn')
+        os.makedirs(f'{C}/input', exist_ok=True); shutil.copy(files[0], f'{C}/input/cast.png'); shutil.copy(files[0], os.path.join(MADE, 'cast.png'))
+        say('   cast sheet ready')
+        for n, (name, prompt) in enumerate(sorted(MAKE.items()), 1):
+            w = json.loads(json.dumps(KW))
+            w['7']['inputs']['text'] = ("Use the characters from the reference image and keep them EXACTLY the same: same faces, hair, body, skin tone, "
+                                       "clothes and colours. Draw a completely new scene with the characters in new poses. " + prompt)
+            w['12']['inputs']['seed'] = 1000 + n
+            files = R.run_one(w, f'picture {n}/{len(MAKE)} {name}')
+            if files: KEEP(files[0], name)
+    else:
+        FW = json.loads(r'''{"1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "flux1-schnell-fp8.safetensors"}}, "2": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["1", 1], "text": "x"}}, "3": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["1", 1], "text": ""}}, "4": {"class_type": "EmptySD3LatentImage", "inputs": {"width": 1344, "height": 768, "batch_size": 1}}, "5": {"class_type": "KSampler", "inputs": {"model": ["1", 0], "seed": 7, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "denoise": 1.0}}, "6": {"class_type": "VAEDecode", "inputs": {"samples": ["5", 0], "vae": ["1", 2]}}, "7": {"class_type": "SaveImage", "inputs": {"images": ["6", 0], "filename_prefix": "page"}}}''')
+        for n, (name, prompt) in enumerate(sorted(MAKE.items()), 1):
+            w = json.loads(json.dumps(FW)); w['2']['inputs']['text'] = prompt; w['5']['inputs']['seed'] = 1000 + n
+            files = R.run_one(w, f'picture {n}/{len(MAKE)} {name}')
+            if files: KEEP(files[0], name)
     if proc: proc.terminate(); time.sleep(5)
-    if os.path.exists(fx): os.remove(fx)                         # free the disk before the video models arrive
+    for f_ in PIC_FILES:                                            # free the disk before the video models arrive
+        if os.path.exists(f_): os.remove(f_)
 def pic_path(n):
     p = os.path.join(JDIR, n)
     return p if os.path.exists(p) else os.path.join(MADE, n)
