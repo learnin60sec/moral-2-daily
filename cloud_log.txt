@@ -219,3 +219,84 @@
 [19:20:44 +125.5 min] STEP 6 YouTube upload
 [19:20:53 +125.7 min]    https://youtu.be/L4Fa6C7H7p0 (schedule)
 [19:20:53 +125.7 min] === DONE in 126 min ===
+[06:56:53 +  0.0 min] === CLOUD DAILY: 2-min video, AI clips: ALL pictures ===
+[06:56:53 +  0.0 min] STEP 1 story + voice
+[06:57:29 +  0.6 min]    बच्चों की छुपी आवाज़: 21 pictures needed
+[06:57:29 +  0.6 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX) in the same job as the clips
+[06:57:29 +  0.6 min] STEP 3+4 key moments -> Kaggle clips
+[06:57:29 +  0.6 min]    prompt 001.png (written by story text (picture drawn on Kaggle)): A beautiful village at sunrise with lush green surroundings, but the riverbed is visibly drying up. The charac...
+[06:57:29 +  0.6 min]    prompt 002.png (written by story text (picture drawn on Kaggle)): The village well shows a very low water level, and a few villagers are standing nearby, looking frustrated and...
+[06:57:29 +  0.6 min]    prompt 003.png (written by story text (picture drawn on Kaggle)): Meera and Chhotu standing on a dusty path near the village square, looking at the arguing villagers with sad e...
+[06:57:29 +  0.6 min]    prompt 004.png (written by story text (picture drawn on Kaggle)): Meera talks to Chhotu, gesturing with her hands while Chhotu looks determined, nodding in agreement. The chara...
+[06:57:29 +  0.6 min]    prompt 005.png (written by story text (picture drawn on Kaggle)): Meera and Chhotu arrive at the old veranda of a mud house where the elderly woman is sitting. The characters m...
+[06:57:29 +  0.6 min]    prompt 006.png (written by story text (picture drawn on Kaggle)): The elderly woman speaks with a thoughtful expression, gesturing towards the direction of the old pond. The ch...
+[06:57:29 +  0.6 min]    prompt 007.png (written by story text (picture drawn on Kaggle)): Meera and Chhotu standing at the edge of an overgrown, dry, and dirty pond, looking at the debris. The charact...
+[06:57:29 +  0.6 min]    prompt 008.png (written by story text (picture drawn on Kaggle)): Meera and Chhotu walking towards the pond early in the morning, carrying shovels and baskets. The characters m...
+[06:57:29 +  0.6 min]    prompt 009.png (written by story text (picture drawn on Kaggle)): Meera and Chhotu starting to dig the mud under the hot sun. The characters make small natural movements, gentl...
+[06:57:29 +  0.6 min]    prompt 010.png (written by story text (picture drawn on Kaggle)): Other children join Meera and Chhotu, helping them clear the debris from the pond. The characters make small n...
+[06:57:29 +  0.6 min]    prompt 011.png (written by story text (picture drawn on Kaggle)): Villagers arrive with tools to join the kids, creating a large, unified effort to clean the pond. The characte...
+[06:57:29 +  0.6 min]    prompt 012.png (written by story text (picture drawn on Kaggle)): The first raindrops fall on the newly dug, clean pond bed. The characters make small natural movements, gentle...
+[06:57:29 +  0.6 min]    prompt 013.png (written by story text (picture drawn on Kaggle)): The pond begins to fill up with fresh rainwater as the monsoon continues. The characters make small natural mo...
+[06:57:29 +  0.6 min]    prompt 014.png (written by story text (picture drawn on Kaggle)): Villagers standing around the full pond, smiling and cheering with joy. The characters make small natural move...
+[06:57:29 +  0.6 min]    prompt 015.png (written by story text (picture drawn on Kaggle)): The elderly woman places her hands on the heads of Meera and Chhotu, smiling proudly. The characters make smal...
+[06:57:29 +  0.6 min]    prompt 016.png (written by story text (picture drawn on Kaggle)): Meera and Chhotu smiling back, standing beside the full pond at sunset. The characters make small natural move...
+[06:57:29 +  0.6 min]    prompt 017.png (written by story text (picture drawn on Kaggle)): The village landscape is now lush green and healthy, showing signs of prosperity. The characters make small na...
+[06:57:29 +  0.6 min]    prompt 018.png (written by story text (picture drawn on Kaggle)): Villagers are using the water from the pond for their daily chores, looking content. The characters make small...
+[06:57:29 +  0.6 min]    prompt 019.png (written by story text (picture drawn on Kaggle)): Meera and Chhotu playing happily near the water's edge. The characters make small natural movements, gentle wi...
+[06:57:29 +  0.6 min]    prompt 020.png (written by story text (picture drawn on Kaggle)): The elderly woman watching the kids play, reflecting on the community's change. The characters make small natu...
+[06:57:29 +  0.6 min]    prompt 021.png (written by story text (picture drawn on Kaggle)): A wide shot of the village, emphasizing the harmony brought by the children's initiative. The characters make ...
+[06:57:29 +  0.6 min]    21 pictures will be drawn on Kaggle with ComfyUI (FLUX)
+[06:57:37 +  0.7 min]    Kaggle job started on account 1 (hasanpurjunction): 11 clips, about 185 min
+[06:57:48 +  0.9 min]    Kaggle job started on account 2 (kdlmeesho): 10 clips, about 170 min
+[07:12:03 + 15.2 min]    Kaggle working ... 0 of 2 accounts finished
+[07:27:16 + 30.4 min]    Kaggle working ... 0 of 2 accounts finished
+[07:42:29 + 45.6 min]    Kaggle working ... 0 of 2 accounts finished
+[07:57:42 + 60.8 min]    Kaggle working ... 0 of 2 accounts finished
+[08:11:54 + 75.0 min]    Kaggle working ... 0 of 2 accounts finished
+[08:27:07 + 90.2 min]    Kaggle working ... 0 of 2 accounts finished
+[08:42:20 +105.5 min]    Kaggle working ... 0 of 2 accounts finished
+[08:57:33 +120.7 min]    Kaggle working ... 0 of 2 accounts finished
+[09:12:46 +135.9 min]    Kaggle working ... 0 of 2 accounts finished
+[09:26:59 +150.1 min]    Kaggle working ... 0 of 2 accounts finished
+[09:42:09 +165.3 min]    Kaggle working ... 1 of 2 accounts finished
+[09:57:15 +180.4 min]    Kaggle working ... 1 of 2 accounts finished
+[10:12:22 +195.5 min]    Kaggle working ... 1 of 2 accounts finished
+[10:17:24 +200.5 min]    account 1: Kaggle job status = urjunction/m2-clips has status "kernelworkerstatus.complete"
+[10:17:29 +200.6 min]    account 1 report: pictures 11/11, clips 11/11, 155.2 min on Kaggle
+[10:17:30 +200.6 min]    picture 021.png drawn on Kaggle
+[10:17:30 +200.6 min]    picture 007.png drawn on Kaggle
+[10:17:31 +200.6 min]    picture 001.png drawn on Kaggle
+[10:17:31 +200.6 min]    picture 017.png drawn on Kaggle
+[10:17:31 +200.6 min]    picture 019.png drawn on Kaggle
+[10:17:32 +200.6 min]    picture 011.png drawn on Kaggle
+[10:17:32 +200.6 min]    picture 009.png drawn on Kaggle
+[10:17:32 +200.7 min]    picture 015.png drawn on Kaggle
+[10:17:33 +200.7 min]    picture 003.png drawn on Kaggle
+[10:17:33 +200.7 min]    picture 013.png drawn on Kaggle
+[10:17:34 +200.7 min]    picture 005.png drawn on Kaggle
+[10:17:34 +200.7 min]    account 2: Kaggle job status = kdlmeesho/m2-clips has status "kernelworkerstatus.complete"
+[10:17:38 +200.7 min]    account 2 report: pictures 10/10, clips 10/10, 198.1 min on Kaggle
+[10:17:38 +200.7 min]    picture 020.png drawn on Kaggle
+[10:17:39 +200.8 min]    picture 008.png drawn on Kaggle
+[10:17:39 +200.8 min]    picture 012.png drawn on Kaggle
+[10:17:39 +200.8 min]    picture 016.png drawn on Kaggle
+[10:17:40 +200.8 min]    picture 004.png drawn on Kaggle
+[10:17:40 +200.8 min]    picture 014.png drawn on Kaggle
+[10:17:41 +200.8 min]    picture 018.png drawn on Kaggle
+[10:17:41 +200.8 min]    picture 010.png drawn on Kaggle
+[10:17:41 +200.8 min]    picture 002.png drawn on Kaggle
+[10:17:42 +200.8 min]    picture 006.png drawn on Kaggle
+[10:17:42 +200.8 min]    21 AI clips received (of 21)
+[10:17:42 +200.8 min] STEP 4b clip doctor
+[10:20:47 +203.9 min]    CLIP DOCTOR: 008.mp4 REJECTED - melting / scene jump (similarity 0.03, jump 17) -> this page uses the living picture
+[10:20:47 +203.9 min]    CLIP DOCTOR: 009.mp4 REJECTED - melting / scene jump (similarity -0.01, jump 21) -> this page uses the living picture
+[10:20:48 +203.9 min]    CLIP DOCTOR: 010.mp4 REJECTED - melting / scene jump (similarity -0.05, jump 24) -> this page uses the living picture
+[10:23:52 +207.0 min]    CLIP DOCTOR: 017.mp4 REJECTED - melting / scene jump (similarity -0.04, jump 27) -> this page uses the living picture
+[10:24:53 +208.0 min]    CLIP DOCTOR: 019.mp4 REJECTED - melting / scene jump (similarity -0.03, jump 11) -> this page uses the living picture
+[10:24:53 +208.0 min]    CLIP DOCTOR: 020.mp4 REJECTED - melting / scene jump (similarity 0.03, jump 13) -> this page uses the living picture
+[10:25:02 +208.1 min]    CLIP DOCTOR: 15 of 21 clips passed
+[10:25:02 +208.1 min] STEP 5 video
+[10:32:41 +215.8 min]    QC: CORRECTED & COMPLETE
+[10:32:41 +215.8 min] STEP 6 YouTube upload
+[10:32:55 +216.0 min]    https://youtu.be/7d2RmOboJ3o (schedule)
+[10:32:55 +216.0 min] === DONE in 216 min ===
