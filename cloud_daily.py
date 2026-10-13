@@ -200,7 +200,8 @@ def start_job(acc, P, names, prompts, tag, draw_only=()):
     size = [int(v) for v in os.getenv("M2_CLIP_SIZE", "832x480").lower().split("x")]
     negative = ("cartoon, anime, 2D, illustration, painting, CGI, plastic skin, waxy face, deformed hands, extra fingers, new people appearing, "
                 "objects turning into something else, morphing, distorted face, changing clothes, fast camera shake, text, watermark, flicker, blurry") if m2.REALISTIC else ""
-    json.dump({"job_id": job_id, "image_model": IMAGE_MODEL, "cast_prompt": CAST_PROMPT.get("text", ""), "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size, "negative": negative, "smooth": SMOOTH, "upscale": UPSCALE},
+    json.dump({"job_id": job_id, "image_model": IMAGE_MODEL, "cast_prompt": CAST_PROMPT.get("text", ""), "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size, "negative": negative, "smooth": SMOOTH, "upscale": UPSCALE,
+               "chains": [u for u in CHAINS_FOR.get(tag, []) if all(x in names for x in u)]},
               open(os.path.join(jd, "job.json"), "w"))
     json.dump({"title": ds_slug, "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
     kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
@@ -221,6 +222,8 @@ def start_job(acc, P, names, prompts, tag, draw_only=()):
 
 
 JOB_IDS = {}
+CHAINS_FOR = {}
+SLOT = {}
 
 DRAW = {}
 CAST_PROMPT = {}
@@ -260,11 +263,29 @@ def kaggle_clips(P, st, pages):
         say(f"   account {n + 1}: {led['used_min'].get(a['user'], 0) / 60:.1f} h used this Kaggle week -> room for {room[a['name']]} clips today")
     share = {a["name"]: [] for a in accs}; draw_only = {a["name"]: [] for a in accs}
     pending = list(names)
+    CH = max(1, int(os.getenv("M2_CHAIN_MAX", "3")))                  # clips of one place are made one after another, each from the last frame
+    units, cur = [], []
+    for n_ in names:
+        beat = st["pictures"][int(n_[:3]) - 1].get("beat")
+        if cur and (beat != st["pictures"][int(cur[-1][:3]) - 1].get("beat") or int(n_[:3]) != int(cur[-1][:3]) + 1 or len(cur) >= CH):
+            units.append(cur); cur = []
+        cur.append(n_)
+    if cur: units.append(cur)
+    chains = {a["name"]: [] for a in accs}
+    week_left0 = {a["name"]: WEEK_BUDGET - led["used_min"].get(a["user"], 0.0) - SETUP_MIN for a in accs}
+    for u in units:                                                   # each chain to the account with the most weekly time left that has room for ALL of it
+        fit = [a for a in accs if room[a["name"]] - len(share[a["name"]]) >= len(u)]
+        if not fit: continue
+        a = max(fit, key=lambda x: week_left0[x["name"]] - len(share[x["name"]]) * PAGE_MIN)
+        share[a["name"]].extend(u); chains[a["name"]].append(u)
+        for n_ in u: pending.remove(n_)
+    if units: say(f"   {len(units)} chains (one place = one continuous shot, max {CH} clips): " + " ".join("[" + ",".join(x[:3] for x in u) + "]" for u in units))
     week_left = {a["name"]: WEEK_BUDGET - led["used_min"].get(a["user"], 0.0) - SETUP_MIN for a in accs}
-    while pending:                       # one page at a time to the account with the MOST WEEKLY TIME LEFT (fresh accounts work more, tired ones less)
+    while pending:                       # left-over pages one at a time to the account with the MOST WEEKLY TIME LEFT
         open_ = [a for a in accs if len(share[a["name"]]) < room[a["name"]]]
         if not open_: break
-        a = max(open_, key=lambda x: week_left[x["name"]] - len(share[x["name"]]) * PAGE_MIN); share[a["name"]].append(pending.pop(0))
+        a = max(open_, key=lambda x: week_left[x["name"]] - len(share[x["name"]]) * PAGE_MIN); n_ = pending.pop(0)
+        share[a["name"]].append(n_); chains[a["name"]].append([n_])
     if pending:
         say(f"   no Kaggle time left for {len(pending)} pages -> they stay living pictures (their pictures are still drawn where time allows)")
         spare = {a["name"]: max(0.0, (room[a["name"]] - len(share[a["name"]])) * PAGE_MIN + PAGE_MIN * 0.9) for a in accs}
@@ -276,7 +297,8 @@ def kaggle_clips(P, st, pages):
         mine, extra = share[acc["name"]], draw_only[acc["name"]]
         if not mine and not extra: continue
         try:
-            jobs.append((acc, start_job(acc, P, mine, prompts, acc["name"], extra), mine))
+            CHAINS_FOR[acc["name"]] = chains.get(acc["name"], [])
+            jobs.append((acc, start_job(acc, P, mine, prompts, acc["name"], extra), mine)); SLOT[acc["name"]] = n + 1
             say(f"   Kaggle job started on account {n + 1} ({acc['user']}): {len(mine)} clips" + (f" + {len(extra)} pictures only" if extra else "")
                 + f", pictures by {IMAGE_MODEL}, about {int(len(mine) * PAGE_MIN + len(extra) * IMG_MIN + SETUP_MIN)} min")
         except Exception as e:
@@ -290,7 +312,8 @@ def kaggle_clips(P, st, pages):
             if any(w in stt for w in ("complete", "error", "cancel")): done[k_id + acc["name"]] = stt
         if int(time.time() - T0) % 900 < 60: say(f"   Kaggle working ... {len(done)} of {len(jobs)} accounts finished")
     os.makedirs(P.p("clips"), exist_ok=True); got = 0
-    for n_acc, (acc, k_id, mine) in enumerate(jobs, 1):
+    for acc, k_id, mine in jobs:
+        n_acc = SLOT.get(acc["name"], 0)
         stt = done.get(k_id + acc["name"], "not finished in time")
         say(f"   account {n_acc}: Kaggle job status = {stt.strip()[-60:]}")
         if "quota" in stt.lower():
@@ -326,6 +349,10 @@ def kaggle_clips(P, st, pages):
         for f in glob.glob(os.path.join(od, "results", "*.mp4")):
             name = os.path.basename(f).split("__")[0]
             if re.fullmatch(r"\d{3}\.mp4", name): shutil.copy(f, P.p("clips", name)); got += 1
+        chf = os.path.join(od, "results", "chained.json")
+        if os.path.exists(chf):
+            old_ = json.load(open(P.p("clips", "chained.json"))) if os.path.exists(P.p("clips", "chained.json")) else []
+            json.dump(sorted(set(old_) | set(json.load(open(chf)))), open(P.p("clips", "chained.json"), "w"))
         for f in glob.glob(os.path.join(od, "results", "*.png")):              # pictures drawn on Kaggle (this job only)
             name = os.path.basename(f); dst = P.p(m2.pics_dir(P), name)
             if re.fullmatch(r"\d{3}\.png", name) and not os.path.exists(dst): S.clean_frame(open(f, "rb").read(), dst); say(f"   picture {name} drawn on Kaggle")

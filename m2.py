@@ -6,7 +6,7 @@ MORAL 2 - flipbook storybook videos.
   python m2.py video                 pictures follow the voice word by word, soft crossfades + camera, Hindi subtitles -> FINAL.mp4
 Picture every ~3 s (setx M2_SECONDS_PER_PICTURE 3). Voice: Microsoft (one take, no breaks) or setx STUDIO_VOICE gemini.
 """
-import os, sys, re, json, time, glob, math, shutil, asyncio, subprocess
+import os, math, sys, re, json, time, glob, shutil, asyncio, subprocess
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import studio as S
 
@@ -1289,8 +1289,7 @@ class ClipFrames:
             self.path = path
         n = len(self.frames)
         if not n: return None
-        cyc = 2 * n - 2 if n > 1 else 1; k = k % cyc
-        return self.frames[k if k < n else cyc - k].astype("float32")
+        return self.frames[max(0, min(k, n - 1))].astype("float32")          # never plays backwards; the last frame is held
 
 
 def clip_for(P, picture_path):
@@ -1374,7 +1373,7 @@ def video(subtitles=True):
     plan.append((TI + story_len, total, pic_for(len(st["pictures"])), -2))
     avg = (story_len / max(1, len(plan) - 2))
     say(f"  {len(plan)} pictures planned, in story order" + (", each one appears when its words are spoken" if ws else "") +
-        f", about {avg:.1f} s each, 2 s soft melt between pictures")
+        f", about {avg:.1f} s each, soft melts (1 s between clips, one continuous camera)")
     cache = {}
     healed = []
     def big(path):
@@ -1402,30 +1401,49 @@ def video(subtitles=True):
     clipper, clipper2 = ClipFrames(), ClipFrames()
     n_clips = len({os.path.basename(f) for _, _, f, _ in plan if clip_for(P, f)})
     if n_clips: say(f"  {n_clips} pages play a real AI clip (characters move), the others are living pictures")
-    def frame_for(f, t, a, b=None):
+    try: chained = set(json.load(open(P.p("clips", "chained.json"))))   # clips made from the last frame of the clip before (Kaggle chains)
+    except Exception: chained = set()
+    if chained: say(f"  {len(chained)} clips continue the clip before them -> no cut there (one continuous shot)")
+    def seamless(f, nf):
+        return bool(nf and os.path.basename(nf) in chained and clip_for(P, f) and clip_for(P, nf))
+    def frame_for(f, t, a, b=None, ends=False):
         c = clip_for(P, f)
         if c:
             fr_ = (clipper if c == clipper.path or clipper.path is None or c != clipper2.path else clipper2)
             fr_.get(c, 0); n_ = len(fr_.frames)
             speed = 1.0
             if b and n_: speed = min(1.0, max(0.75, (n_ / 30.0) / max(0.1, b - a)))   # a longer page -> the clip plays a little slower
+            if ends and b and n_: speed = min(1.35, max(0.75, (n_ / 30.0) / max(0.1, b - a)))   # reach the LAST frame exactly when the next clip begins
             img_ = fr_.get(c, int((t - a) * 30 * speed))
-            if img_ is not None: return img_
+            if img_ is not None: return clip_camera(img_, t)
         return cam(f, t)
+    def clip_camera(img_, t):
+        """the same slow camera for every clip, running through the cuts (gentle breathing zoom + drift) -> clips feel like one film"""
+        if os.getenv("M2_CLIP_CAMERA", "1") != "1": return img_
+        from PIL import Image as _I
+        import numpy as _np
+        z = 1.045 + 0.025 * math.sin(2 * math.pi * t / 23.0)            # 1.02 .. 1.07, one slow breath every 23 s
+        dx = 0.5 + 0.18 * math.sin(2 * math.pi * t / 31.0); dy = 0.5 + 0.12 * math.sin(2 * math.pi * t / 37.0 + 1.0)
+        cw, ch = 1280 / z, 720 / z; x0 = (1280 - cw) * dx; y0 = (720 - ch) * dy
+        im_ = _I.fromarray(img_.clip(0, 255).astype("uint8")).resize((1280, 720), _I.BICUBIC, box=(x0, y0, x0 + cw, y0 + ch))
+        return _np.asarray(im_).astype("float32")
     atmo = Atmosphere(); fxs = [atmosphere_for(b.get("place", "") or (st["pictures"][0].get("place", "") if st["pictures"] else "")) for b in st["beats"]]
     for bi_, fx_ in enumerate(fxs[:6]): say(f"  part {bi_ + 1} living details: {', '.join(sorted(fx_))}")
     for fr in range(n):
         t = fr / fps
         while pi < len(plan) - 1 and t >= plan[pi][1]: pi += 1
         a, b, f, bi = plan[pi]
-        img = frame_for(f, t, a, b)
+        nf_ = plan[pi + 1][2] if pi + 1 < len(plan) else None
+        img = frame_for(f, t, a, b, ends=seamless(f, nf_))
         if pi + 1 < len(plan) and plan[pi + 1][2] != f:         # LONG dissolve: the picture melts into the next one
             clip_near = bool(clip_for(P, f) or clip_for(P, plan[pi + 1][2]))
-            XF = min(0.5 if clip_near else 1.2, (b - a) * 0.4)       # short melt next to AI clips -> no ghost pictures
+            XF = min(float(os.getenv("M2_CLIP_MELT", "1.0")) if clip_near else 1.2, (b - a) * 0.4)   # soft 1-s melt between clips
+            if seamless(f, plan[pi + 1][2]): XF = min(0.25, (b - a) * 0.2)   # chained clips: the next starts where this one ends
             if t > b - XF:
                 w = (t - (b - XF)) / XF; w = w * w * (3 - 2 * w)    # smooth-step: starts and ends softly
                 nf = plan[pi + 1][2]; nc = clip_for(P, nf)
                 nxt = clipper2.get(nc, 0) if nc else None
+                if nxt is not None: nxt = clip_camera(nxt, t)            # the incoming clip gets the same camera -> no jump when the melt ends
                 img = img * (1 - w) + (nxt if nxt is not None else cam(nf, t)) * w
         if os.getenv("M2_ATMOSPHERE", "1") != "0" and bi >= 0:   # living details of this part's place
             img = atmo.draw(img, t, fxs[bi], float(os.getenv("M2_ATMOSPHERE_STRENGTH", "1.0")))
