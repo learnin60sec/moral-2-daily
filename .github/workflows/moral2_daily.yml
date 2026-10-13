@@ -11,6 +11,11 @@ on:
       upload:
         description: "Upload to YouTube? (1 = yes, 0 = no, for tests)"
         default: "1"
+      style:
+        description: "Video style"
+        type: choice
+        options: ["2d_moral", "realistic_mystery"]
+        default: "2d_moral"
 permissions:
   contents: write
 concurrency:
@@ -66,7 +71,8 @@ jobs:
           M2_MINUTES: ${{ github.event.inputs.minutes || '4' }}
           M2_AUTO_UPLOAD: ${{ github.event.inputs.upload || '1' }}
           M2_CLIP_SIZE: "832x480"        # "640x368" = about 40% faster (a bit softer)
-          M2_PICTURES: "kaggle"          # pictures by ComfyUI (FLUX) on Kaggle; "cloudflare" = old way
+          M2_PICTURES: "kaggle"
+          M2_STYLE: ${{ github.event.inputs.style || '2d_moral' }}   # daily runs keep 2d_moral; change here to make it daily          # pictures by ComfyUI (FLUX) on Kaggle; "cloudflare" = old way
           M2_SECONDS_PER_PICTURE: "6"     # 3 min = ~30 clips, shared by 2 Kaggle accounts
           M2_KAGGLE_MINUTES: "300"
           M2_CLIPS: "all"                # every picture becomes a Wan 2.2 14B clip
