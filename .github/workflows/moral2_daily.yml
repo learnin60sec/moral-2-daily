@@ -1,8 +1,8 @@
 name: Moral 2 daily video
 on:
   schedule:
-    - cron: "17 21 * * *"        # 02:47 IST - the daily 2D moral video (automatic)
-    - cron: "47 1 * * *"         # 07:17 IST - backup alarm: skips by itself if today's 2D video is already made
+    - cron: "17 21 * * *"        # 02:47 IST - the daily video (automatic, style below)
+    - cron: "47 1 * * *"         # 07:17 IST - backup alarm: skips by itself if today's video is already made
   workflow_dispatch:              # "Run workflow" button for a manual run
     inputs:
       minutes:
@@ -88,15 +88,15 @@ jobs:
           M2_MINUTES: ${{ github.event.inputs.minutes || '4.5' }}
           M2_AUTO_UPLOAD: ${{ github.event.inputs.upload || '1' }}
           M2_CLIP_SIZE: "832x480"        # "640x368" = about 40% faster (a bit softer)
-          M2_PICTURES: "kaggle"
+          M2_PICTURES: "kaggle"           # pictures by ComfyUI on Kaggle; "cloudflare" = old way
           M2_IMAGE_MODEL: ${{ github.event.inputs.image_model || 'kontext' }}
           M2_FILM_LOOK: ${{ github.event.inputs.film_look || 'none' }}   # none = clean best quality; 90s = classic TV feel
           M2_STYLE: ${{ github.event.inputs.style || '2d_mystery' }}   # automatic runs = 2D cartoon mystery; others when chosen by hand
-          M2_1080: "1"
+          M2_1080: "1"                   # 1080p output, sharp logo
           M2_SMOOTH: "1"                 # RIFE: clips 16 -> 32 fps
-          M2_UPSCALE: "1"                # cartoon upscaler: sharper clips                   # 1080p output, sharp logo          # pictures by ComfyUI (FLUX) on Kaggle; "cloudflare" = old way
-          M2_SECONDS_PER_PICTURE: "6"     # 3 min = ~30 clips, shared by 2 Kaggle accounts
-          M2_KAGGLE_MINUTES: "300"
+          M2_UPSCALE: "1"                # cartoon upscaler: sharper clips
+          M2_SECONDS_PER_PICTURE: "6"     # one page (picture + clip) every 6 s
+          M2_KAGGLE_MINUTES: "300"        # GitHub waits this long for Kaggle
           M2_CLIPS: "all"                # every picture becomes a Wan 2.2 14B clip
           STUDIO_UPLOAD: schedule
           STUDIO_TIMES: "18:00"
@@ -114,6 +114,6 @@ jobs:
         if: always() && steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "moral2-bot"; git config user.email "bot@users.noreply.github.com"
-          git add used_stories.json cloud_log.txt last_done.txt kaggle_usage.json 2>/dev/null || true
+          for f in used_stories.json cloud_log.txt last_done.txt kaggle_usage.json; do [ -f "$f" ] && git add "$f"; done
           git commit -m "daily run ${{ github.run_number }}" || true
           for i in 1 2 3; do git pull --rebase -X theirs -q && git push -q && break; sleep 5; done || true
