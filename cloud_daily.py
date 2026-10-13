@@ -139,7 +139,10 @@ CLIP_MIN = float(os.getenv("M2_MIN_PER_CLIP", "17.5"))
 IMAGE_MODEL = os.getenv("M2_IMAGE_MODEL", "kontext").lower()          # kontext = same characters on every page (slower) | schnell = fast
 IMG_MIN = 4.0 if IMAGE_MODEL == "kontext" else 0.6                  # minutes per picture on a Kaggle T4
 SETUP_MIN = 25.0 if IMAGE_MODEL == "kontext" else 17.0
-PAGE_MIN = CLIP_MIN + IMG_MIN
+SMOOTH = os.getenv("M2_SMOOTH", "1") == "1"; UPSCALE = os.getenv("M2_UPSCALE", "1") == "1"
+ENH_MIN = (0.5 if SMOOTH else 0) + (0.8 if UPSCALE else 0)           # RIFE 16->32 fps + cartoon upscaler, per clip
+SETUP_MIN += 3 if (SMOOTH or UPSCALE) else 0
+PAGE_MIN = CLIP_MIN + IMG_MIN + ENH_MIN
 WEEK_BUDGET = float(os.getenv("M2_KAGGLE_WEEKLY_MIN", "1740"))      # 29 of the 30 free hours (1 hour safety)
 LEDGER = os.path.join(HERE, "kaggle_usage.json")
 
@@ -196,7 +199,7 @@ def start_job(acc, P, names, prompts, tag, draw_only=()):
     size = [int(v) for v in os.getenv("M2_CLIP_SIZE", "832x480").lower().split("x")]
     negative = ("cartoon, anime, 2D, illustration, painting, CGI, plastic skin, waxy face, deformed hands, extra fingers, new people appearing, "
                 "objects turning into something else, morphing, distorted face, changing clothes, fast camera shake, text, watermark, flicker, blurry") if m2.REALISTIC else ""
-    json.dump({"job_id": job_id, "image_model": IMAGE_MODEL, "cast_prompt": CAST_PROMPT.get("text", ""), "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size, "negative": negative},
+    json.dump({"job_id": job_id, "image_model": IMAGE_MODEL, "cast_prompt": CAST_PROMPT.get("text", ""), "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size, "negative": negative, "smooth": SMOOTH, "upscale": UPSCALE},
               open(os.path.join(jd, "job.json"), "w"))
     json.dump({"title": ds_slug, "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
     kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
@@ -307,7 +310,8 @@ def kaggle_clips(P, st, pages):
             r_ = json.load(open(rep[0]))
             led = ledger(); led["used_min"][acc["user"]] = round(led["used_min"].get(acc["user"], 0.0) + float(r_.get("minutes") or 0), 1); save_ledger(led)
             say(f"   account {n_acc} report: pictures {len(r_.get('pictures_made', []))}/{len(r_.get('pictures_asked', []))}, "
-                f"clips {len(r_.get('clips_made', []))}/{len(r_.get('clips_asked', []))}, {r_.get('minutes')} min on Kaggle")
+                f"clips {len(r_.get('clips_made', []))}/{len(r_.get('clips_asked', []))}, {r_.get('minutes')} min on Kaggle, "
+                f"smooth 32 fps: {'yes' if r_.get('smooth_rife') else 'no'}, sharper clips: {r_.get('upscaled', 0)}")
             if len(r_.get("clips_made", [])) < len(r_.get("clips_asked", [])):
                 for line in r_.get("comfy_log_tail", [])[-12:]: say(f"      ComfyUI: {line[:160]}")
         else:

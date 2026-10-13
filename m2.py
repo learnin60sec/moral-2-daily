@@ -1278,7 +1278,7 @@ class ClipFrames:
     def get(self, path, k):
         import numpy as np
         if path != self.path:
-            raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-i", path, "-vf", "scale=1280:720:flags=lanczos,fps=24", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+            raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-i", path, "-vf", "scale=1280:720:flags=lanczos,fps=30", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
                                  capture_output=True).stdout
             self.frames = np.frombuffer(raw, np.uint8).reshape(-1, 720, 1280, 3) if raw else []
             self.path = path
@@ -1403,8 +1403,8 @@ def video(subtitles=True):
             fr_ = (clipper if c == clipper.path or clipper.path is None or c != clipper2.path else clipper2)
             fr_.get(c, 0); n_ = len(fr_.frames)
             speed = 1.0
-            if b and n_: speed = min(1.0, max(0.75, (n_ / 24.0) / max(0.1, b - a)))   # a longer page -> the clip plays a little slower
-            img_ = fr_.get(c, int((t - a) * 24 * speed))
+            if b and n_: speed = min(1.0, max(0.75, (n_ / 30.0) / max(0.1, b - a)))   # a longer page -> the clip plays a little slower
+            img_ = fr_.get(c, int((t - a) * 30 * speed))
             if img_ is not None: return img_
         return cam(f, t)
     atmo = Atmosphere(); fxs = [atmosphere_for(b.get("place", "") or (st["pictures"][0].get("place", "") if st["pictures"] else "")) for b in st["beats"]]
