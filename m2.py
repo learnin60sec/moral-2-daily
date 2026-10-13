@@ -1406,15 +1406,23 @@ def video(subtitles=True):
     if chained: say(f"  {len(chained)} clips continue the clip before them -> no cut there (one continuous shot)")
     def seamless(f, nf):
         return bool(nf and os.path.basename(nf) in chained and clip_for(P, f) and clip_for(P, nf))
-    def frame_for(f, t, a, b=None, ends=False):
+    def xf_of(i):
+        """melt length between plan[i] and plan[i+1] (same rules as the drawing loop)"""
+        a_, b_, f_, _ = plan[i]; nf_ = plan[i + 1][2] if i + 1 < len(plan) else None
+        if not nf_ or nf_ == f_: return 0.0
+        near = bool(clip_for(P, f_) or clip_for(P, nf_))
+        return min(float(os.getenv("M2_CLIP_MELT", "2.0")) if near else 1.2, (b_ - a_) * 0.45)   # slow, soft 2-s change (like the picture videos)
+    LEAD = [0.0] + [(xf_of(i) if clip_for(P, plan[i + 1][2]) else 0.0) for i in range(len(plan) - 1)]   # the incoming clip already PLAYS during the melt
+    def clip_speed(n_, span, ends):
+        if not n_ or span <= 0: return 1.0
+        return min(1.0, max(0.75, (n_ / 30.0) / span))                    # never faster than real speed
+    def frame_for(f, t, a, b=None, ends=False, lead=0.0):
         c = clip_for(P, f)
         if c:
             fr_ = (clipper if c == clipper.path or clipper.path is None or c != clipper2.path else clipper2)
             fr_.get(c, 0); n_ = len(fr_.frames)
-            speed = 1.0
-            if b and n_: speed = min(1.0, max(0.75, (n_ / 30.0) / max(0.1, b - a)))   # a longer page -> the clip plays a little slower
-            if ends and b and n_: speed = min(1.35, max(0.75, (n_ / 30.0) / max(0.1, b - a)))   # reach the LAST frame exactly when the next clip begins
-            img_ = fr_.get(c, int((t - a) * 30 * speed))
+            speed = clip_speed(n_, (b - a) + lead, ends) if b else 1.0          # longer page -> a little slower; chain -> reach the last frame at the join
+            img_ = fr_.get(c, int(((t - a) + lead) * 30 * speed))
             if img_ is not None: return clip_camera(img_, t)
         return cam(f, t)
     def clip_camera(img_, t):
@@ -1434,15 +1442,18 @@ def video(subtitles=True):
         while pi < len(plan) - 1 and t >= plan[pi][1]: pi += 1
         a, b, f, bi = plan[pi]
         nf_ = plan[pi + 1][2] if pi + 1 < len(plan) else None
-        img = frame_for(f, t, a, b, ends=seamless(f, nf_))
+        img = frame_for(f, t, a, b, ends=seamless(f, nf_), lead=LEAD[pi])
         if pi + 1 < len(plan) and plan[pi + 1][2] != f:         # LONG dissolve: the picture melts into the next one
-            clip_near = bool(clip_for(P, f) or clip_for(P, plan[pi + 1][2]))
-            XF = min(float(os.getenv("M2_CLIP_MELT", "1.0")) if clip_near else 1.2, (b - a) * 0.4)   # soft 1-s melt between clips
-            if seamless(f, plan[pi + 1][2]): XF = min(0.25, (b - a) * 0.2)   # chained clips: the next starts where this one ends
+            XF = xf_of(pi)                                              # the same slow 2-s change everywhere
             if t > b - XF:
-                w = (t - (b - XF)) / XF; w = w * w * (3 - 2 * w)    # smooth-step: starts and ends softly
+                w = (t - (b - XF)) / XF; w = w * w * w * (w * (w * 6 - 15) + 10)   # smoother-step: starts and ends very softly
                 nf = plan[pi + 1][2]; nc = clip_for(P, nf)
-                nxt = clipper2.get(nc, 0) if nc else None
+                nxt = None
+                if nc:                                                   # the next clip is already PLAYING during the melt (never a frozen first frame)
+                    clipper2.get(nc, 0); a2, b2 = plan[pi + 1][0], plan[pi + 1][1]
+                    nf2 = plan[pi + 2][2] if pi + 2 < len(plan) else None
+                    sp2 = clip_speed(len(clipper2.frames), (b2 - a2) + XF, seamless(nf, nf2))
+                    nxt = clipper2.get(nc, int((t - (b - XF)) * 30 * sp2))
                 if nxt is not None: nxt = clip_camera(nxt, t)            # the incoming clip gets the same camera -> no jump when the melt ends
                 img = img * (1 - w) + (nxt if nxt is not None else cam(nf, t)) * w
         if os.getenv("M2_ATMOSPHERE", "1") != "0" and bi >= 0:   # living details of this part's place
