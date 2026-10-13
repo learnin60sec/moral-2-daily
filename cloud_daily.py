@@ -166,7 +166,7 @@ def room_today(acc, d):
     """clips this account can still make today: what is left of the week, and what fits in one run"""
     if acc["user"] in d.get("full", []): return 0
     left = WEEK_BUDGET - d["used_min"].get(acc["user"], 0.0) - SETUP_MIN
-    per_run = float(os.getenv("M2_KAGGLE_MINUTES", "300")) - SETUP_MIN - 15
+    per_run = float(os.getenv("M2_KAGGLE_MINUTES", "300")) - SETUP_MIN - 40          # 40 min for Kaggle's queue and slow moments
     return max(0, int(min(left, per_run) // PAGE_MIN))
 
 
@@ -256,10 +256,11 @@ def kaggle_clips(P, st, pages):
         say(f"   account {n + 1}: {led['used_min'].get(a['user'], 0) / 60:.1f} h used this Kaggle week -> room for {room[a['name']]} clips today")
     share = {a["name"]: [] for a in accs}; draw_only = {a["name"]: [] for a in accs}
     pending = list(names)
-    while pending:                                                    # one page at a time to the account with the most room left
+    week_left = {a["name"]: WEEK_BUDGET - led["used_min"].get(a["user"], 0.0) - SETUP_MIN for a in accs}
+    while pending:                       # one page at a time to the account with the MOST WEEKLY TIME LEFT (fresh accounts work more, tired ones less)
         open_ = [a for a in accs if len(share[a["name"]]) < room[a["name"]]]
         if not open_: break
-        a = max(open_, key=lambda x: room[x["name"]] - len(share[x["name"]])); share[a["name"]].append(pending.pop(0))
+        a = max(open_, key=lambda x: week_left[x["name"]] - len(share[x["name"]]) * PAGE_MIN); share[a["name"]].append(pending.pop(0))
     if pending:
         say(f"   no Kaggle time left for {len(pending)} pages -> they stay living pictures (their pictures are still drawn where time allows)")
         spare = {a["name"]: max(0.0, (room[a["name"]] - len(share[a["name"]])) * PAGE_MIN + PAGE_MIN * 0.9) for a in accs}
@@ -403,6 +404,14 @@ def main():
     minutes = float(os.getenv("M2_MINUTES", "3")); kc = os.getenv("M2_CLIPS", "all").lower()
     k = 0 if kc in ("all", "0", "") else int(kc)
     say(f"=== CLOUD DAILY: {minutes:.0f}-min video, AI clips: {'ALL pictures' if k == 0 else k} ===")
+    accs_ = kaggle_accounts()
+    if accs_ and k == 0 and os.getenv("M2_FIT_TO_KAGGLE", "1") == "1":   # every page MUST become a clip -> the story only as long as Kaggle can animate today
+        led_ = ledger(); can = sum(room_today(a, led_) for a in accs_)
+        sec_pic = float(os.getenv("M2_SECONDS_PER_PICTURE", "6")); fit = round(can * sec_pic / 60 * 0.9, 1)
+        say(f"   Kaggle can animate {can} pages today -> up to {fit} min with a moving clip on EVERY page")
+        if fit < minutes:
+            if fit < 1.0: say("STOP: not enough Kaggle time left this week for a full-clip video - the week resets on Saturday"); sys.exit(1)
+            say(f"   video shortened from {minutes} to {fit} min so no page is left without a clip"); minutes = fit
     say("STEP 1 story + voice"); P = m2.story(minutes); st = P.load("story.json")
     say(f"   {st.get('title', '')}: {len(st['pictures'])} pictures needed")
     src_ = os.getenv("M2_PICTURES", "kaggle").lower()

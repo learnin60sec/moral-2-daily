@@ -66,6 +66,8 @@ Improve this story so families watch till the end. Rules:
 1. The FIRST part must hook in the first two sentences (a question, a strange event or a surprise).
 2. Every part must move the story forward; cut repetition and filler; vivid, simple, natural spoken Hindi with short dialogues in quotes.
 3. {'Plant 3 fair clues the viewer can notice before the reveal, include one false suspect, and make the reveal surprising but LOGICAL (no real ghosts or magic).' if MYSTERY else 'Clear conflict, emotional turning point and a satisfying ending.'}
+   KEEP PEOPLE WATCHING: end EVERY part (except the last) with a small cliffhanger or question that makes the viewer need the next part;
+   hold the big answer back until the last two parts; short sentences; one light funny moment; one warm emotional moment; no slow parts.
 4. Keep the SAME title, characters (names and looks), places and EXACTLY {len(beats)} parts, each about the same length as now. No '...', no line breaks.
 5. Family-friendly: no horror, no gore, no violence shown.
 Return the improved story in EXACTLY the same JSON shape.
@@ -1469,16 +1471,23 @@ def video(subtitles=True):
     if hd:                                                        # YouTube keeps much more detail from a 1080p upload
         chain.append("scale=1920:1080:flags=lanczos,unsharp=5:5:0.55:5:5:0.0")
         say("  output: 1080p (sharp scaling)" + (" + sharp channel logo" if os.path.exists(logo_png) and os.getenv("M2_LOGO", "1") != "0" else ""))
-    vin = ["-i", out_v]; vmap = "0:v"; fc_v = None
+    vin = ["-i", out_v]; n_in = 1; parts = [f"[0:v]{','.join(chain) if chain else 'null'}[b0]"]; cur = "b0"
     if hd and os.path.exists(logo_png) and os.getenv("M2_LOGO", "1") != "0":
         lw = int(float(os.getenv("M2_LOGO_WIDTH", "180")) * 1.5); op_ = float(os.getenv("M2_LOGO_OPACITY", "0.9"))
-        fc_v = (f"[0:v]{','.join(chain)}[base];[1:v]scale={lw}:-1:flags=lanczos,format=rgba,colorchannelmixer=aa={op_}[lg];"
-                f"[base][lg]overlay=W-w-21:18,format=yuv420p[v]")
-        vin += ["-i", logo_png]; vmap = "[v]"
-    elif chain:
-        fc_v = f"[0:v]{','.join(chain)},format=yuv420p[v]"; vmap = "[v]"
+        vin += ["-i", logo_png]
+        parts.append(f"[{n_in}:v]scale={lw}:-1:flags=lanczos,format=rgba,colorchannelmixer=aa={op_}[lg];[{cur}][lg]overlay=W-w-21:18[b1]"); cur = "b1"; n_in += 1
+    badge = os.path.join(HERE, "SUBSCRIBE_BADGE.png")
+    if hd and os.path.exists(badge) and os.getenv("M2_SUB_BADGE", "1") == "1":
+        t0 = TI + 2.0; t1 = min(TI + float(os.getenv("M2_SUB_BADGE_SECONDS", "60")), total - 6)
+        if t1 > t0 + 5:
+            say(f"  subscribe button: {t0:.0f}-{t1:.0f} s, bottom right")
+            vin += ["-loop", "1", "-t", f"{total:.2f}", "-i", badge]
+            parts.append(f"[{n_in}:v]scale=300:-1:flags=lanczos,format=rgba,fade=t=in:st={t0:.2f}:d=0.6:alpha=1,fade=t=out:st={t1 - 0.6:.2f}:d=0.6:alpha=1[sb];"
+                         f"[{cur}][sb]overlay=x=W-w-34:y='H-h-150-8*abs(sin(2*PI*t/1.6))':enable='between(t,{t0:.2f},{t1:.2f})':eval=frame[b2]"); cur = "b2"; n_in += 1
+    fc_v = ";".join(parts) + f";[{cur}]format=yuv420p[v]"; vmap = "[v]"
+    if not chain and n_in == 1: fc_v = None; vmap = "0:v"
     vcodec = ["-c:v", "copy"] if not fc_v else ["-filter_complex", fc_v, "-c:v", "libx264", "-preset", "medium", "-crf", "17"]
-    ai = len(vin) // 2
+    ai = n_in
     subprocess.run([ff, "-y", "-v", "quiet"] + vin + ["-i", full_a] + vcodec + ["-map", vmap, "-map", f"{ai}:a", "-c:a", "aac", "-b:a", "160k",
                     "-shortest", out], check=True)
     os.remove(full_a)
