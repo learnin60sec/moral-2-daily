@@ -300,3 +300,26 @@
 [10:32:41 +215.8 min] STEP 6 YouTube upload
 [10:32:55 +216.0 min]    https://youtu.be/7d2RmOboJ3o (schedule)
 [10:32:55 +216.0 min] === DONE in 216 min ===
+[16:11:52 +  0.0 min] === CLOUD DAILY: 0.5-min video, AI clips: ALL pictures ===
+[16:11:52 +  0.0 min]    Kaggle can animate 60 pages today -> up to 5.4 min with a moving clip on EVERY page
+[16:11:52 +  0.0 min] STEP 1 story + voice
+[16:15:34 +  3.7 min]    आधी रात की स्कूल घंटी: 7 pictures needed
+[16:15:34 +  3.7 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX schnell) in the same job as the clips
+[16:15:34 +  3.7 min] STEP 3+4 key moments -> Kaggle clips
+[16:15:34 +  3.7 min]    prompt 001.png (written by story text (picture drawn on Kaggle)): A wide shot of the dark, desolate village primary school courtyard at midnight, illuminated by eerie moonlight...
+[16:15:34 +  3.7 min]    prompt 002.png (written by story text (picture drawn on Kaggle)): Outside the rusted school gate, a hazy, dusty morning scene where an anxious, angry crowd of villagers surroun...
+[16:15:34 +  3.7 min]    prompt 003.png (written by story text (picture drawn on Kaggle)): In the warm afternoon sunlight on the school verandah, Chintu points towards small, mysterious animal paw prin...
+[16:15:34 +  3.7 min]    prompt 004.png (written by story text (picture drawn on Kaggle)): At dusk, under a banyan branch near the school rooftop, amber light glints off sticky, glistening honey drops ...
+[16:15:34 +  3.7 min]    prompt 005.png (written by story text (picture drawn on Kaggle)): Under cool blue midnight moonlight, a mischievous baby monkey jumps onto the school bell rope, causing it to c...
+[16:15:34 +  3.7 min]    prompt 006.png (written by story text (picture drawn on Kaggle)): In the bright, cheerful morning school courtyard, the villagers gather around, looking relieved and happy as t...
+[16:15:34 +  3.7 min]    prompt 007.png (written by story text (picture drawn on Kaggle)): Master Ji stands in the center of the sunny courtyard, placing a hand on Chintu's shoulder in a gesture of pro...
+[16:15:34 +  3.7 min]    7 pictures will be drawn on Kaggle with ComfyUI (FLUX schnell)
+[16:15:34 +  3.7 min]    account 1: 18.7 h used this Kaggle week -> room for 12 clips today
+[16:15:34 +  3.7 min]    account 2: 0.0 h used this Kaggle week -> room for 12 clips today
+[16:15:34 +  3.7 min]    account 3: 0.0 h used this Kaggle week -> room for 12 clips today
+[16:15:34 +  3.7 min]    account 4: 0.0 h used this Kaggle week -> room for 12 clips today
+[16:15:34 +  3.7 min]    account 5: 0.0 h used this Kaggle week -> room for 12 clips today
+[16:16:03 +  4.2 min]    Kaggle job started on account 2 (kdlmeesho): 2 clips, pictures by schnell, about 58 min
+[16:16:33 +  4.7 min]    Kaggle job started on account 3 (morel3ac): 2 clips, pictures by schnell, about 58 min
+[16:17:03 +  5.2 min]    Kaggle job started on account 4 (shabana4ac): 2 clips, pictures by schnell, about 58 min
+[16:17:34 +  5.7 min]    Kaggle job started on account 5 (jaibunissa5ac): 1 clips, pictures by schnell, about 39 min
