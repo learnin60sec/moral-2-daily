@@ -419,8 +419,9 @@ def main():
             import upload as U; info = U.upload_m2(P); say(f"   {info['url'] + ' (' + info['mode'] + ')' if info else 'not uploaded (QC)'}")
         except Exception as e: say(f"   upload ERROR: {str(e)[:200]}")
     shutil.copy(P.p("FINAL.mp4"), os.path.join(HERE, "FINAL_TODAY.mp4"))
-    ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-    open(os.path.join(HERE, "last_done.txt"), "w").write(datetime.datetime.now(ist).strftime("%Y-%m-%d"))   # the backup alarm skips today
+    if os.getenv("GITHUB_EVENT_NAME", "schedule") == "schedule":      # only the automatic 2D run counts as "today's video is done"
+        ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        open(os.path.join(HERE, "last_done.txt"), "w").write(datetime.datetime.now(ist).strftime("%Y-%m-%d"))
     say(f"=== DONE in {(time.time() - T0) / 60:.0f} min ===")
 
 
