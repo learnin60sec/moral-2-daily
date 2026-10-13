@@ -45,7 +45,7 @@ def story(minutes=4.0):
     P = S.Project(folder)
     S.stage1(P, True); idea = P.load("chosen.json")
     n_beats = max(6, int(round(minutes * 3))); words = int(minutes * 60 * WORDS_PER_SEC)
-    say(f"\n  writing the story (~{minutes:.0f} min, {n_beats} parts) ...")
+    say(f"\n  writing the story (~{minutes:g} min, {n_beats} parts) ...")
     kind = ("Hindi MYSTERY story (rahasya): a strange happening in an Indian village or small town, clues, rising suspense, a clever surprising "
             "reveal at the end and one short lesson. Family-friendly suspense only: no gore, no horror, no violence shown, nothing too scary for children"
             if MYSTERY else "Hindi moral story")

@@ -86,12 +86,43 @@ def ask(prompt):
     sys.exit("STOPPED: no text AI answered (set GROQ_API_KEY or GEMINI_API_KEY, or wait for the free limit to reset)")
 
 
+_WRITERS = []
+
+
+def _gemini_writers(keys):
+    """the text models Google has switched ON for these keys: newest Pro first, then Flash, then Flash-Lite (no image/voice/embedding models)"""
+    if _WRITERS: return _WRITERS
+    import requests, re as _re
+    seen = set()
+    for key in keys:
+        try:
+            ms = requests.get("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": key}, timeout=30).json().get("models", [])
+        except Exception:
+            ms = []
+        for m in ms:
+            n = m.get("name", "").split("/")[-1]
+            if "generateContent" not in m.get("supportedGenerationMethods", []) or not n.startswith("gemini"): continue
+            if any(x in n for x in ("tts", "image", "audio", "live", "embedding", "vision", "thinking-exp", "learnlm", "robotics", "computer-use")): continue
+            seen.add(n)
+    def rank(n):
+        kind = 0 if "pro" in n else (2 if "lite" in n else 1)
+        ver = [float(v) for v in _re.findall(r"(\d+(?:\.\d+)?)", n.replace("gemini-", "", 1))[:1]] or [0.0]
+        latest = 0 if "latest" in n else 1
+        return (kind, -ver[0], latest, "preview" in n, n)
+    pref = os.getenv("M2_WRITER_MODEL", "")
+    names = sorted(seen, key=rank)
+    if pref and pref in seen: names = [pref] + [n for n in names if n != pref]
+    if not names: names = ["gemini-pro-latest", "gemini-flash-latest", "gemini-flash-lite-latest"]
+    _WRITERS.extend(names[:6]); return _WRITERS
+
+
 def ask_writer(prompt, temperature=0.9):
     """stories are written by GEMINI: 2.5 Pro on key 1 and key 2, then Flash on key 1 and key 2 (busy -> wait and retry).
     Only if every Gemini try fails: GPT-OSS-120B / Kimi K2, then the normal ask(). Every failure reason is printed."""
     import requests, time as _t
     keys = [k for k in (os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_API_KEY2")) if k]
-    models = [m for m in dict.fromkeys((os.getenv("M2_WRITER_MODEL", "gemini-2.5-pro"), "gemini-pro-latest", "gemini-flash-latest", "gemini-2.5-flash")) if m]
+    models = _gemini_writers(keys)                                   # asked from Google every run: only models that are switched on
+    print(f"  (Gemini writers today: {', '.join(models[:5]) or 'none'})")
     for model in models:
         for ki, key in enumerate(keys, 1):
             tag = f"{model} (key {ki})"
@@ -109,7 +140,7 @@ def ask_writer(prompt, temperature=0.9):
                     if d: print(f"  (written by {tag})"); return d
                     print(f"  ({tag}: answer was not valid JSON)"); break
                 if r.status_code in (500, 503) and attempt < 2:
-                    print(f"  ({tag} busy {r.status_code} - waiting 20 s)"); _t.sleep(20); continue
+                    wait_ = 30 * (attempt + 1); print(f"  ({tag} busy {r.status_code} - waiting {wait_} s)"); _t.sleep(wait_); continue
                 print(f"  ({tag} did not write: {r.status_code} {r.text[:160].strip()})")
                 if r.status_code in (400, 403, 404, 429): _DEAD.add(tag)
                 break
