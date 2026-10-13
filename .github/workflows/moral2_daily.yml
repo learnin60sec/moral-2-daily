@@ -17,10 +17,10 @@ on:
         options: ["2d_mystery", "2d_moral", "realistic_mystery"]
         default: "2d_mystery"
       image_model:
-        description: "Picture model (kontext = same characters on every page, slower)"
+        description: "Picture model (schnell = full scenes | kontext_scene = schnell scene + Kontext makes characters match, TEST it | kontext = old, copies the cast-sheet layout)"
         type: choice
-        options: ["kontext", "schnell"]
-        default: "kontext"
+        options: ["schnell", "kontext_scene", "kontext"]
+        default: "schnell"
       film_look:
         description: "Film look"
         type: choice
@@ -89,7 +89,7 @@ jobs:
           M2_AUTO_UPLOAD: ${{ github.event.inputs.upload || '1' }}
           M2_CLIP_SIZE: "832x480"        # "640x368" = about 40% faster (a bit softer)
           M2_PICTURES: "kaggle"           # pictures by ComfyUI on Kaggle; "cloudflare" = old way
-          M2_IMAGE_MODEL: ${{ github.event.inputs.image_model || 'kontext' }}
+          M2_IMAGE_MODEL: ${{ github.event.inputs.image_model || 'schnell' }}
           M2_FILM_LOOK: ${{ github.event.inputs.film_look || 'none' }}   # none = clean best quality; 90s = classic TV feel
           M2_STYLE: ${{ github.event.inputs.style || '2d_mystery' }}   # automatic runs = 2D cartoon mystery; others when chosen by hand
           M2_1080: "1"                   # 1080p output, sharp logo
