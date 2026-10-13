@@ -1,35 +1,49 @@
 name: Moral 2 daily video
 on:
   schedule:
-    - cron: "30 0 * * *"         # every day 06:00 IST (00:30 UTC) - after Cloudflare resets the free amount (00:00 UTC)
+    - cron: "17 21 * * *"        # 02:47 IST - quiet hour, not a round time (GitHub delays busy times)
+    - cron: "47 1 * * *"         # 07:17 IST - backup alarm: skips by itself if today's video is already made
   workflow_dispatch:              # "Run workflow" button for a manual run
     inputs:
       minutes:
         description: "Video length in minutes (0.5 = 30-second test)"
-        default: "2.5"
+        default: "4"
       upload:
         description: "Upload to YouTube? (1 = yes, 0 = no, for tests)"
         default: "1"
 permissions:
   contents: write
+concurrency:
+  group: moral2-daily
+  cancel-in-progress: false
 jobs:
   video:
     runs-on: ubuntu-latest
     timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
+      - name: Already made today?
+        id: guard
+        run: |
+          today=$(TZ=Asia/Kolkata date +%F)
+          if [ "${{ github.event_name }}" = "schedule" ] && [ -f last_done.txt ] && [ "$(cat last_done.txt)" = "$today" ]; then
+            echo "Today's video is already made - nothing to do."; echo "skip=true" >> $GITHUB_OUTPUT
+          else echo "skip=false" >> $GITHUB_OUTPUT; fi
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - name: Tools and fonts
+        if: steps.guard.outputs.skip != 'true'
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-core > /dev/null
           pip install -q requests pillow numpy edge-tts imageio-ffmpeg google-auth-oauthlib google-api-python-client "kaggle>=1.7" azure-cognitiveservices-speech
       - name: Secrets to files
+        if: steps.guard.outputs.skip != 'true'
         env:
           YT_TOKEN_JSON: ${{ secrets.YT_TOKEN_JSON }}
         run: |
           if [ -n "$YT_TOKEN_JSON" ]; then echo "$YT_TOKEN_JSON" > youtube_token.json; fi
       - name: Make today's video
+        if: steps.guard.outputs.skip != 'true'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
@@ -46,8 +60,12 @@ jobs:
           KAGGLE2_USERNAME: ${{ secrets.KAGGLE2_USERNAME }}
           KAGGLE2_KEY: ${{ secrets.KAGGLE2_KEY }}
           KAGGLE2_API_TOKEN: ${{ secrets.KAGGLE2_API_TOKEN }}
-          M2_MINUTES: ${{ github.event.inputs.minutes || '2.5' }}
+          KAGGLE3_USERNAME: ${{ secrets.KAGGLE3_USERNAME }}
+          KAGGLE3_KEY: ${{ secrets.KAGGLE3_KEY }}
+          KAGGLE3_API_TOKEN: ${{ secrets.KAGGLE3_API_TOKEN }}
+          M2_MINUTES: ${{ github.event.inputs.minutes || '4' }}
           M2_AUTO_UPLOAD: ${{ github.event.inputs.upload || '1' }}
+          M2_CLIP_SIZE: "832x480"        # "640x368" = about 40% faster (a bit softer)
           M2_PICTURES: "kaggle"          # pictures by ComfyUI (FLUX) on Kaggle; "cloudflare" = old way
           M2_SECONDS_PER_PICTURE: "6"     # 3 min = ~30 clips, shared by 2 Kaggle accounts
           M2_KAGGLE_MINUTES: "300"
@@ -56,7 +74,7 @@ jobs:
           STUDIO_TIMES: "18:00"
         run: python cloud_daily.py
       - name: Keep the video for download (7 days)
-        if: always()
+        if: always() && steps.guard.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: video-${{ github.run_number }}
@@ -65,9 +83,9 @@ jobs:
             cloud_log.txt
           retention-days: 7
       - name: Remember used stories
-        if: always()
+        if: always() && steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "moral2-bot"; git config user.email "bot@users.noreply.github.com"
-          git add used_stories.json cloud_log.txt 2>/dev/null || true
+          git add used_stories.json cloud_log.txt last_done.txt kaggle_usage.json 2>/dev/null || true
           git commit -m "daily run ${{ github.run_number }}" || true
           git push || true
