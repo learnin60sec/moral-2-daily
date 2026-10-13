@@ -1,8 +1,8 @@
 name: Moral 2 daily video
 on:
   schedule:
-    - cron: "17 21 * * *"        # 02:47 IST - quiet hour, not a round time (GitHub delays busy times)
-    - cron: "47 1 * * *"         # 07:17 IST - backup alarm: skips by itself if today's video is already made
+    - cron: "17 21 * * *"        # 02:47 IST - the daily 2D moral video (automatic)
+    - cron: "47 1 * * *"         # 07:17 IST - backup alarm: skips by itself if today's 2D video is already made
   workflow_dispatch:              # "Run workflow" button for a manual run
     inputs:
       minutes:
@@ -72,7 +72,7 @@ jobs:
           M2_AUTO_UPLOAD: ${{ github.event.inputs.upload || '1' }}
           M2_CLIP_SIZE: "832x480"        # "640x368" = about 40% faster (a bit softer)
           M2_PICTURES: "kaggle"
-          M2_STYLE: ${{ github.event.inputs.style || '2d_moral' }}   # daily runs keep 2d_moral; change here to make it daily          # pictures by ComfyUI (FLUX) on Kaggle; "cloudflare" = old way
+          M2_STYLE: ${{ github.event.inputs.style || '2d_moral' }}   # automatic runs = 2d_moral; realistic only when chosen by hand          # pictures by ComfyUI (FLUX) on Kaggle; "cloudflare" = old way
           M2_SECONDS_PER_PICTURE: "6"     # 3 min = ~30 clips, shared by 2 Kaggle accounts
           M2_KAGGLE_MINUTES: "300"
           M2_CLIPS: "all"                # every picture becomes a Wan 2.2 14B clip
