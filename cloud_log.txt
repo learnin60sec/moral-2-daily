@@ -462,3 +462,57 @@
 [18:51:52 + 54.7 min] STEP 5 video
 [18:59:37 + 62.5 min]    QC: CORRECTED & COMPLETE
 [18:59:37 + 62.5 min] === DONE in 62 min ===
+[19:09:13 +  0.0 min] === CLOUD DAILY: 0.3-min video, AI clips: ALL pictures ===
+[19:09:13 +  0.0 min]     style: 2d_mystery | picture model: schnell | film look: 90s | upload: no | Gemini keys: 2
+[19:09:13 +  0.0 min]    Kaggle can animate 60 pages today -> up to 5.4 min with a moving clip on EVERY page
+[19:09:13 +  0.0 min] STEP 1 story + voice
+[19:14:12 +  5.0 min]    हवेली का सुरीला साया: 7 pictures needed
+[19:14:12 +  5.0 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX schnell) in the same job as the clips
+[19:14:12 +  5.0 min] STEP 3+4 key moments -> Kaggle clips
+[19:14:12 +  5.0 min]    prompt 001.png (written by story text (picture drawn on Kaggle)): A dusk-lit mansion courtyard with eerie shadows and a purple sunset glow, the three friends stand at its cente...
+[19:14:12 +  5.0 min]    prompt 002.png (written by story text (picture drawn on Kaggle)): Outside the massive gate, upset villagers clutch lanterns while a trembling Munshi steps forward, and Anu gest...
+[19:14:12 +  5.0 min]    prompt 003.png (written by story text (picture drawn on Kaggle)): On the windy terrace stairs, the dramatic evening sky swirls as Soham laughs, his arms spread wide, inviting o...
+[19:14:12 +  5.0 min]    prompt 004.png (written by story text (picture drawn on Kaggle)): At the rooftop edge, rows of clay bowls filled with varying depths of water catch the breeze, tiny ripples for...
+[19:14:12 +  5.0 min]    prompt 005.png (written by story text (picture drawn on Kaggle)): Children gather on the rooftop terrace, eyes fixed on the shimmering ripples, smiling as Soham explains the wa...
+[19:14:12 +  5.0 min]    prompt 006.png (written by story text (picture drawn on Kaggle)): First picture: Munshi breaks into tears, his shoulders shaking, while the villagers look on with concern. The ...
+[19:14:12 +  5.0 min]    prompt 007.png (written by story text (picture drawn on Kaggle)): Second picture: The same courtyard now warm with twilight, villagers and Munshi laughing together, relief evid...
+[19:14:12 +  5.0 min]    7 pictures will be drawn on Kaggle with ComfyUI (FLUX schnell)
+[19:14:12 +  5.0 min]    account 1: 18.7 h used this Kaggle week -> room for 12 clips today
+[19:14:12 +  5.0 min]    account 2: 0.7 h used this Kaggle week -> room for 12 clips today
+[19:14:12 +  5.0 min]    account 3: 0.9 h used this Kaggle week -> room for 12 clips today
+[19:14:12 +  5.0 min]    account 4: 0.8 h used this Kaggle week -> room for 12 clips today
+[19:14:12 +  5.0 min]    account 5: 0.8 h used this Kaggle week -> room for 12 clips today
+[19:14:12 +  5.0 min]    6 chains (one place = one continuous shot, max 3 clips): [001] [002] [003] [004] [005] [006,007]
+[19:14:43 +  5.5 min]    Kaggle job started on account 2 (kdlmeesho): 2 clips, pictures by schnell, about 58 min
+[19:14:51 +  5.6 min]    Kaggle job started on account 3 (morel3ac): 1 clips, pictures by schnell, about 39 min
+[19:15:21 +  6.1 min]    Kaggle job started on account 4 (shabana4ac): 3 clips, pictures by schnell, about 78 min
+[19:15:53 +  6.7 min]    Kaggle job started on account 5 (jaibunissa5ac): 1 clips, pictures by schnell, about 39 min
+[19:25:10 + 16.0 min]    Kaggle working ... 0 of 4 accounts finished
+[19:39:38 + 30.4 min]    Kaggle working ... 0 of 4 accounts finished
+[19:54:58 + 45.8 min]    Kaggle working ... 2 of 4 accounts finished
+[20:10:08 + 60.9 min]    Kaggle working ... 3 of 4 accounts finished
+[20:24:16 + 75.1 min]    Kaggle working ... 3 of 4 accounts finished
+[20:29:18 + 80.1 min]    account 2: Kaggle job status = 1013-191412-kaggle2 has status "kernelworkerstatus.complete"
+[20:29:21 + 80.1 min]    account 2 report: pictures 2/2, clips 2/2, 43.0 min on Kaggle, smooth 32 fps: yes, sharper clips: 2
+[20:29:21 + 80.1 min]    picture 001.png drawn on Kaggle
+[20:29:22 + 80.2 min]    picture 005.png drawn on Kaggle
+[20:29:22 + 80.2 min]    account 3: Kaggle job status = 1013-191443-kaggle3 has status "kernelworkerstatus.complete"
+[20:29:24 + 80.2 min]    account 3 report: pictures 1/1, clips 1/1, 29.6 min on Kaggle, smooth 32 fps: yes, sharper clips: 1
+[20:29:24 + 80.2 min]    picture 004.png drawn on Kaggle
+[20:29:24 + 80.2 min]    account 4: Kaggle job status = 1013-191451-kaggle4 has status "kernelworkerstatus.complete"
+[20:29:27 + 80.2 min]    account 4 report: pictures 3/3, clips 3/3, 72.9 min on Kaggle, smooth 32 fps: yes, sharper clips: 3
+[20:29:27 + 80.2 min]    picture 007.png drawn on Kaggle
+[20:29:27 + 80.2 min]    picture 002.png drawn on Kaggle
+[20:29:28 + 80.3 min]    picture 006.png drawn on Kaggle
+[20:29:28 + 80.3 min]    account 5: Kaggle job status = 1013-191521-kaggle5 has status "kernelworkerstatus.complete"
+[20:29:30 + 80.3 min]    account 5 report: pictures 1/1, clips 1/1, 28.0 min on Kaggle, smooth 32 fps: yes, sharper clips: 1
+[20:29:31 + 80.3 min]    picture 003.png drawn on Kaggle
+[20:29:31 + 80.3 min]    7 AI clips received (of 7)
+[20:29:31 + 80.3 min] STEP 4b clip doctor
+[20:29:35 + 80.4 min]    CLIP DOCTOR: 003.mp4 REJECTED - melting / scene jump (similarity -0.09, jump 21) -> this page uses the living picture
+[20:29:36 + 80.4 min]    CLIP DOCTOR: 004.mp4 REJECTED - melting / scene jump (similarity -0.00, jump 11) -> this page uses the living picture
+[20:29:55 + 80.7 min]    CLIP DOCTOR: 007.mp4 REJECTED - melting / scene jump (similarity 0.04, jump 15) -> this page uses the living picture
+[20:29:55 + 80.7 min]    CLIP DOCTOR: 4 of 7 clips passed
+[20:29:55 + 80.7 min] STEP 5 video
+[20:41:50 + 92.6 min]    QC: CORRECTED & COMPLETE
+[20:41:50 + 92.6 min] === DONE in 93 min ===
