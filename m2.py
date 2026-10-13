@@ -50,14 +50,16 @@ def story(minutes=4.0):
             "reveal at the end and one short lesson. Family-friendly suspense only: no gore, no horror, no violence shown, nothing too scary for children"
             if MYSTERY else "Hindi moral story")
     look_txt = "realistic cinematic" if REALISTIC else "2D cartoon"
-    d = S.ask_writer(f"""Write the {kind} "{idea['title']}" ({json.dumps(idea, ensure_ascii=False)}) for a {minutes:.0f}-minute narrated
+    d = S.ask_writer(f"""Write the {kind} "{idea['title']}" ({json.dumps(idea, ensure_ascii=False)}) for a {minutes:g}-minute narrated
 {look_txt} video told by ONE storyteller{' with a gripping, suspenseful voice' if MYSTERY else ' with a warm voice'}. About {words} Hindi words in total, split into EXACTLY {n_beats} consecutive parts.
 Write it to be READ ALOUD in one smooth take: flowing sentences, natural Hindi, feelings shown through the words and punctuation
 (! ? , and dialogue in quotes) - never use '...' or line breaks inside a part.
 JSON only: {{"title": "...", "moral": "one short Hindi sentence", "moral_tone": "happy|sad|serious",
 "characters": [{{"name": "...", "look": "ONE fixed {'realistic appearance' if REALISTIC else '2D cartoon design'} in English: age, body, face, hair, skin tone, exact clothes with colours"}}],
 "beats": [{{"narration": "Hindi text of this part", "place": "English: place + time of day + light{' (mysterious mood)' if MYSTERY else ''}"}}]}}""")
+    d = d if isinstance(d, dict) else {}
     beats = [b for b in d.get("beats", []) if isinstance(b, dict) and b.get("narration")]
+    if not beats: raise SystemExit("STOPPED: no AI could write the story today (see the lines above) - try again later")
     if beats and os.getenv("M2_STORY_EDITOR", "1") == "1":           # a second pass by an "editor" makes the story clearly better
         say("  story editor: hook, clues, logic, natural Hindi ...")
         try:
@@ -74,6 +76,7 @@ Improve this story so families watch till the end. Rules:
 5. Family-friendly: no horror, no gore, no violence shown.
 Return the improved story in EXACTLY the same JSON shape.
 STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_tone": d.get("moral_tone"), "characters": d.get("characters"), "beats": beats}, ensure_ascii=False)}""", temperature=0.7)
+            e = e if isinstance(e, dict) else {}                         # no answer at all -> the first version is kept
             eb = [b for b in e.get("beats", []) if isinstance(b, dict) and b.get("narration")]
             old_len = sum(len(b["narration"]) for b in beats); new_len = sum(len(b["narration"]) for b in eb)
             if len(eb) == len(beats) and 0.75 * old_len <= new_len <= 1.5 * old_len:

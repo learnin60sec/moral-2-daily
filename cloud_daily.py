@@ -409,6 +409,9 @@ def main():
     minutes = float(os.getenv("M2_MINUTES", "3")); kc = os.getenv("M2_CLIPS", "all").lower()
     k = 0 if kc in ("all", "0", "") else int(kc)
     say(f"=== CLOUD DAILY: {minutes:g}-min video, AI clips: {'ALL pictures' if k == 0 else k} ===")
+    say(f"    style: {os.getenv('M2_STYLE', '2d_moral')} | picture model: {IMAGE_MODEL} | film look: {os.getenv('M2_FILM_LOOK', 'none')} | "
+        f"upload: {'yes' if os.getenv('M2_AUTO_UPLOAD', '1') == '1' else 'no'} | Gemini keys: {sum(1 for x in ('GEMINI_API_KEY', 'GEMINI_API_KEY2') if os.getenv(x))}")
+    if IMAGE_MODEL not in ("schnell", "kontext", "kontext_scene"): say(f"    WARNING: unknown picture model '{IMAGE_MODEL}' - schnell is used")
     accs_ = kaggle_accounts()
     if accs_ and k == 0 and os.getenv("M2_FIT_TO_KAGGLE", "1") == "1":   # every page MUST become a clip -> the story only as long as Kaggle can animate today
         led_ = ledger(); can = sum(room_today(a, led_) for a in accs_)

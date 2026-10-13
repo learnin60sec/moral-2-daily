@@ -32,11 +32,7 @@ WF = json.loads(r'''{"1": {"class_type": "UNETLoader", "inputs": {"unet_name": "
 WF['12']['inputs']['length'] = int(round(JOB.get('seconds', 5) * 16 / 4)) * 4 + 1
 if JOB.get('size'): WF['12']['inputs']['width'], WF['12']['inputs']['height'] = int(JOB['size'][0]), int(JOB['size'][1])   # smaller = faster
 if JOB.get('negative'): WF['10']['inputs']['text'] = JOB['negative']
-if RIFE_OK and JOB.get('smooth', True):
-    WF['17'] = {'class_type': 'RIFE VFI', 'inputs': {'ckpt_name': 'rife49.pth', 'frames': ['15', 0], 'clear_cache_after_n_frames': 10,
-                                                     'multiplier': 2, 'fast_mode': True, 'ensemble': True, 'scale_factor': 1.0}}
-    WF['16']['inputs']['images'] = ['17', 0]; WF['16']['inputs']['fps'] = 32.0
-    say('clips: 32 fps (RIFE)')                      # e.g. realistic style: no cartoon look
+# (smooth motion is done AFTER all clips are made, outside this workflow - a problem there can never cost a clip)                      # e.g. realistic style: no cartoon look
 json.dump(WF, open('/kaggle/working/workflow_api.json', 'w'))
 RUNNER_TEXT = '"""Runs a ComfyUI workflow (API format) for every picture. Used by the Kaggle notebook; also testable with any ComfyUI URL."""\nimport os, sys, json, time, glob, shutil, subprocess, copy\nimport requests\nCOMFY = os.getenv("COMFY_DIR", "/tmp/ComfyUI"); URL = os.getenv("COMFY_URL", "http://127.0.0.1:8188")\nOUT = os.getenv("OUT_DIR", "/kaggle/working/outputs"); T0 = time.time()\ndef say(x): print(f"[{time.time() - T0:6.0f} s] {x}", flush=True)\n\n\ndef start_comfy():\n    if os.getenv("COMFY_ALREADY_RUNNING") == "1": return None\n    log = open("/kaggle/working/comfy_log.txt" if os.path.isdir("/kaggle/working") else "/tmp/comfy_log.txt", "w")\n    p = subprocess.Popen([sys.executable, "main.py", "--listen", "127.0.0.1", "--port", "8188", "--disable-auto-launch", "--preview-method", "none"],\n                         cwd=COMFY, stdout=log, stderr=subprocess.STDOUT)\n    say("starting ComfyUI ...")\n    for _ in range(240):\n        try:\n            requests.get(f"{URL}/system_stats", timeout=3); say("ComfyUI is ready"); return p\n        except Exception:\n            if p.poll() is not None: sys.exit("ComfyUI stopped while starting - see comfy_log.txt")\n            time.sleep(2)\n    sys.exit("ComfyUI did not start in 8 minutes - see comfy_log.txt")\n\n\ndef run_one(wf, label):\n    t = time.time()\n    r = requests.post(f"{URL}/prompt", json={"prompt": wf, "client_id": "kaggle"}, timeout=60)\n    if r.status_code != 200: say(f"  {label}: ComfyUI refused the workflow: {r.text[:800]}"); return []\n    pid = r.json()["prompt_id"]; say(f"  {label}: queued (job {pid[:8]})")\n    last = 0\n    while True:\n        time.sleep(5)\n        try: h = requests.get(f"{URL}/history/{pid}", timeout=30).json()\n        except Exception: say("  ComfyUI stopped answering (out of memory?) - see comfy_log.txt"); return []\n        if pid in h: break\n        if time.time() - last > 30: say(f"  {label}: working ... {time.time() - t:.0f} s"); last = time.time()\n    h = h[pid]; st = h.get("status", {})\n    if st.get("status_str") == "error":\n        msgs = [m for m in st.get("messages", []) if m[0] == "execution_error"]\n        say(f"  {label}: ERROR {json.dumps(msgs)[:800]}"); return []\n    files = []\n    for node_out in h.get("outputs", {}).values():\n        for key in ("images", "gifs", "videos", "video"):\n            for f in node_out.get(key, []) or []:\n                if isinstance(f, dict) and f.get("filename"):\n                    src = os.path.join(COMFY, f.get("type", "output"), f.get("subfolder", ""), f["filename"])\n                    if os.path.exists(src): files.append(src)\n    say(f"  {label}: done in {time.time() - t:.0f} s, {len(files)} output file(s)")\n    return files\n\n\ndef to_mp4(webp, fps=None):\n    """animated WEBP from ComfyUI -> MP4 next to it, at the clip\'s real speed (every frame\'s own duration is respected)"""\n    try:\n        from PIL import Image, ImageSequence\n        import imageio_ffmpeg\n        im = Image.open(webp); frames, durs = [], []\n        for f in ImageSequence.Iterator(im):\n            frames.append(f.convert("RGB")); durs.append(max(1, f.info.get("duration") or im.info.get("duration") or 42))\n        if len(frames) < 2: return\n        out_fps = 24; total = sum(durs) / 1000.0; n_out = max(2, round(total * out_fps))\n        starts = [sum(durs[:k]) / 1000.0 for k in range(len(durs))]\n        w, h = frames[0].size; w, h = w - w % 2, h - h % 2\n        p = subprocess.Popen([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-v", "quiet", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(out_fps), "-i", "-",\n                              "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "18", webp[:-5] + ".mp4"], stdin=subprocess.PIPE)\n        k = 0\n        for j in range(n_out):\n            t = j / out_fps\n            while k + 1 < len(starts) and starts[k + 1] <= t: k += 1\n            p.stdin.write(frames[k].crop((0, 0, w, h)).tobytes())\n        p.stdin.close(); p.wait(); say(f"  made {os.path.basename(webp)[:-5]}.mp4 ({total:.1f} s)")\n    except Exception as e:\n        say(f"  (mp4 not made: {str(e)[:80]})")\n\n\ndef main():\n    S = json.load(open(os.getenv("SETTINGS", "/kaggle/working/settings.json")))\n    wf0 = json.load(open(S["workflow"]))\n    loaders = [k for k, n in wf0.items() if n.get("class_type") in ("LoadImage", "LoadImageMask", "VHS_LoadImagePath")]\n    texts = [k for k, n in wf0.items() if n.get("class_type") in ("CLIPTextEncode", "TextEncodeHunyuanVideo_ImageToVideo") or "prompt" in str(n.get("_meta", {}).get("title", "")).lower()]\n    say(f"workflow: {len(wf0)} nodes | picture inputs: {loaders or \'none\'} | text prompts: {texts or \'none\'}")\n    proc = start_comfy()\n    os.makedirs(OUT, exist_ok=True); os.makedirs(os.path.join(COMFY, "input"), exist_ok=True)\n    pics = S.get("pictures") or [None]\n    for i, pic in enumerate(pics, 1):\n        wf = copy.deepcopy(wf0); label = f"{i}/{len(pics)} {os.path.basename(pic) if pic else \'run\'}"\n        if pic:\n            name = f"in_{i:03d}_{os.path.basename(pic)}"; shutil.copy(pic, os.path.join(COMFY, "input", name))\n            for k in loaders: wf[k]["inputs"]["image"] = name\n        ptxt = (S.get("prompts") or [None] * len(pics))[i - 1] or S.get("prompt")\n        if ptxt and texts:\n            k = texts[0]\n            for field in ("text", "prompt", "positive_prompt"):\n                if field in wf[k]["inputs"] and isinstance(wf[k]["inputs"][field], str): wf[k]["inputs"][field] = ptxt; break\n            say(f"  {label}: prompt = {ptxt[:90]}...")\n        for f in run_one(wf, label):\n            base = os.path.splitext(os.path.basename(pic))[0] if pic else "run"\n            dst = os.path.join(OUT, f"{base}__{os.path.basename(f)}"); shutil.copy(f, dst)\n            if dst.lower().endswith(".webp"): to_mp4(dst)\n    shutil.make_archive(OUT, "zip", OUT)\n    say(f"ALL DONE -> {OUT}.zip  ({len(os.listdir(OUT))} files)")\n    if proc: proc.terminate()\n\n\nif __name__ == "__main__":\n    main()\n'
 
@@ -162,9 +158,51 @@ json.dump({'workflow': '/kaggle/working/workflow_api.json', 'pictures': pics, 'p
 env = dict(os.environ, OUT_DIR='/kaggle/working/clips', SETTINGS='/kaggle/working/settings.json', COMFY_DIR=C)
 subprocess.run([sys.executable, '/kaggle/working/run_comfy.py'], cwd='/kaggle/working', env=env)
 os.makedirs('/kaggle/working/clips', exist_ok=True)
+subprocess.run(['pkill', '-f', 'main.py'], capture_output=True); time.sleep(5)              # the video models leave the GPU
+import imageio_ffmpeg as _iff
+FF_ = _iff.get_ffmpeg_exe()
+def _probe(path):
+    import re as _r
+    info = subprocess.run([FF_, '-i', path], capture_output=True, text=True).stderr
+    mm = _r.search(r', (\d+)x(\d+)[, ]', info); fr = _r.search(r'([\d.]+) fps', info)
+    return (int(mm.group(1)), int(mm.group(2)), float(fr.group(1)) if fr else 16.0) if mm else None
+SMOOTHED = 0; SMOOTH_HOW = 'off'
+if JOB.get('smooth', True):
+    rife = None
+    try:                                                                # RIFE called directly, with ALL its required inputs
+        sys.path[:0] = [C, f'{C}/custom_nodes/ComfyUI-Frame-Interpolation']
+        from vfi_models.rife import RIFE_VFI
+        rife = RIFE_VFI()
+    except Exception as e:
+        say(f'RIFE not loaded ({str(e)[:120]}) - ffmpeg smoothing will be used')
+    for clip in sorted(glob.glob('/kaggle/working/clips/*.mp4')):
+        pr = _probe(clip)
+        if not pr: continue
+        w, h, fps = pr; tmp = clip[:-4] + '_s.mp4'; ok = False; t0 = time.time()
+        if rife is not None:
+            try:
+                import torch, numpy as np
+                raw = subprocess.run([FF_, '-v', 'quiet', '-i', clip, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], capture_output=True).stdout
+                fr_ = torch.from_numpy(np.frombuffer(raw, np.uint8).reshape(-1, h, w, 3).astype(np.float32) / 255.0)
+                out = rife.vfi(ckpt_name='rife49.pth', frames=fr_, clear_cache_after_n_frames=10, multiplier=2, fast_mode=True, ensemble=True,
+                               scale_factor=1.0, dtype='float32', torch_compile=False, batch_size=1)[0]
+                arr = (out.clamp(0, 1).cpu().numpy() * 255).round().astype('uint8')
+                p_ = subprocess.Popen([FF_, '-y', '-v', 'quiet', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{w}x{h}', '-r', str(fps * 2), '-i', '-',
+                                       '-c:v', 'libx264', '-crf', '15', '-pix_fmt', 'yuv420p', tmp], stdin=subprocess.PIPE)
+                p_.stdin.write(arr.tobytes()); p_.stdin.close(); p_.wait()
+                ok = arr.shape[0] > len(raw) // (w * h * 3) and os.path.getsize(tmp) > 20000; SMOOTH_HOW = 'RIFE'
+            except Exception as e:
+                say(f'   RIFE failed on {os.path.basename(clip)} ({str(e)[:100]}) - ffmpeg smoothing instead'); ok = False
+        if not ok:
+            r_ = subprocess.run([FF_, '-y', '-v', 'quiet', '-i', clip, '-vf', f'minterpolate=fps={fps * 2:g}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1',
+                                 '-c:v', 'libx264', '-crf', '15', '-pix_fmt', 'yuv420p', tmp])
+            ok = r_.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 20000
+            if ok and SMOOTH_HOW != 'RIFE': SMOOTH_HOW = 'ffmpeg'
+        if ok: os.replace(tmp, clip); SMOOTHED += 1
+        elif os.path.exists(tmp): os.remove(tmp)
+        say(f"   smooth: {os.path.basename(clip)} {'done' if ok else 'kept as it was'} ({time.time() - t0:.0f} s)")
 UPSCALED = 0
 if JOB.get('upscale', True):
-    subprocess.run(['pkill', '-f', 'main.py'], capture_output=True); time.sleep(5)          # the video models leave the GPU
     try:
         import torch, numpy as np, imageio_ffmpeg
         from spandrel import ModelLoader
@@ -209,7 +247,7 @@ made_clips = sorted(f for f in os.listdir('/kaggle/working/clips') if f.endswith
 def _tail(path, n=40):
     try: return open(path, errors='ignore').read().splitlines()[-n:]
     except Exception: return []
-report = {'job_id': JOB.get('job_id'), 'smooth_rife': RIFE_OK, 'upscaled': UPSCALED, 'pictures_asked': sorted(JOB.get('make_pictures', {})), 'pictures_made': made_pics, 'clips_asked': JOB['pictures'], 'clips_made': made_clips,
+report = {'job_id': JOB.get('job_id'), 'smooth_rife': SMOOTHED > 0, 'smooth_how': SMOOTH_HOW, 'smoothed': SMOOTHED, 'upscaled': UPSCALED, 'pictures_asked': sorted(JOB.get('make_pictures', {})), 'pictures_made': made_pics, 'clips_asked': JOB['pictures'], 'clips_made': made_clips,
           'minutes': round((time.time() - T0) / 60, 1), 'comfy_log_tail': _tail('/kaggle/working/comfy_log.txt') + _tail('/tmp/comfy_log.txt')}
 json.dump(report, open('/kaggle/working/clips/report.json', 'w'), indent=1)
 import zipfile

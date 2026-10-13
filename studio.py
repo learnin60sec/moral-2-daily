@@ -90,7 +90,7 @@ _WRITERS = []
 
 
 def _gemini_writers(keys):
-    """the text models Google has switched ON for these keys: newest Pro first, then Flash, then Flash-Lite (no image/voice/embedding models)"""
+    """text models Google has switched ON for these keys: 2 newest Pro, 2 newest Flash, 2 newest Flash-Lite (no voice/image/tool models)"""
     if _WRITERS: return _WRITERS
     import requests, re as _re
     seen = set()
@@ -101,50 +101,63 @@ def _gemini_writers(keys):
             ms = []
         for m in ms:
             n = m.get("name", "").split("/")[-1]
-            if "generateContent" not in m.get("supportedGenerationMethods", []) or not n.startswith("gemini"): continue
-            if any(x in n for x in ("tts", "image", "audio", "live", "embedding", "vision", "thinking-exp", "learnlm", "robotics", "computer-use")): continue
+            if "generateContent" not in m.get("supportedGenerationMethods", []) or not n.startswith("gemini-"): continue
+            if any(x in n for x in ("tts", "image", "audio", "live", "embedding", "vision", "thinking-exp", "learnlm", "robotics", "computer-use", "customtools")): continue
+            if not any(x in n for x in ("pro", "flash")): continue
             seen.add(n)
-    def rank(n):
-        kind = 0 if "pro" in n else (2 if "lite" in n else 1)
-        ver = [float(v) for v in _re.findall(r"(\d+(?:\.\d+)?)", n.replace("gemini-", "", 1))[:1]] or [0.0]
-        latest = 0 if "latest" in n else 1
-        return (kind, -ver[0], latest, "preview" in n, n)
+    def ver(n):
+        v = _re.findall(r"(\d+(?:\.\d+)?)", n.replace("gemini-", "", 1)); return float(v[0]) if v else 0.0
+    def order(group):
+        return sorted(group, key=lambda n: (-ver(n), "latest" not in n, "preview" in n, n))
+    pros = order([n for n in seen if "pro" in n]); lites = order([n for n in seen if "lite" in n]); flashes = order([n for n in seen if "flash" in n and "lite" not in n])
+    names = pros[:2] + flashes[:2] + lites[:2]
     pref = os.getenv("M2_WRITER_MODEL", "")
-    names = sorted(seen, key=rank)
     if pref and pref in seen: names = [pref] + [n for n in names if n != pref]
     if not names: names = ["gemini-pro-latest", "gemini-flash-latest", "gemini-flash-lite-latest"]
-    _WRITERS.extend(names[:6]); return _WRITERS
+    _WRITERS.extend(names); return _WRITERS
 
 
 def ask_writer(prompt, temperature=0.9):
-    """stories are written by GEMINI: 2.5 Pro on key 1 and key 2, then Flash on key 1 and key 2 (busy -> wait and retry).
-    Only if every Gemini try fails: GPT-OSS-120B / Kimi K2, then the normal ask(). Every failure reason is printed."""
+    """stories are written by GEMINI on both keys: Pro -> Flash -> Flash-Lite; 'busy' -> wait and retry, then one more round after 90 s.
+    A key whose daily quota is used up (or Pro with no free quota) is skipped for the rest of the run. Every reason is printed.
+    Only if Gemini cannot write at all: GPT-OSS-120B / Kimi K2, then the normal ask()."""
     import requests, time as _t
     keys = [k for k in (os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_API_KEY2")) if k]
-    models = _gemini_writers(keys)                                   # asked from Google every run: only models that are switched on
-    print(f"  (Gemini writers today: {', '.join(models[:5]) or 'none'})")
-    for model in models:
-        for ki, key in enumerate(keys, 1):
-            tag = f"{model} (key {ki})"
-            if tag in _DEAD: continue
-            for attempt in range(3):
-                try:
-                    r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", headers={"x-goog-api-key": key},
-                                      timeout=300, json={"contents": [{"parts": [{"text": prompt}]}],
-                                                         "generationConfig": {"responseMimeType": "application/json", "temperature": temperature}})
-                except Exception as e:
-                    print(f"  ({tag} did not write: {str(e)[:120]})"); break
-                if r.status_code == 200:
-                    try: d = parse(r.json()["candidates"][0]["content"]["parts"][0]["text"])
-                    except Exception: d = None
-                    if d: print(f"  (written by {tag})"); return d
-                    print(f"  ({tag}: answer was not valid JSON)"); break
-                if r.status_code in (500, 503) and attempt < 2:
-                    wait_ = 30 * (attempt + 1); print(f"  ({tag} busy {r.status_code} - waiting {wait_} s)"); _t.sleep(wait_); continue
-                print(f"  ({tag} did not write: {r.status_code} {r.text[:160].strip()})")
-                if r.status_code in (400, 403, 404, 429): _DEAD.add(tag)
-                break
-    if keys: print("  (no Gemini key could write - using the backup writer)")
+    models = _gemini_writers(keys) if keys else []
+    if keys: print(f"  (Gemini writers today: {', '.join(models)})")
+    deadline = _t.time() + float(os.getenv("M2_WRITER_SECONDS", "360"))      # Gemini gets at most 6 min per job, then the backup writes
+    def one(model, ki, key, tries):
+        tag = f"{model} (key {ki})"
+        if tag in _DEAD or _t.time() > deadline: return None
+        for attempt in range(tries):
+            try:
+                r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", headers={"x-goog-api-key": key},
+                                  timeout=300, json={"contents": [{"parts": [{"text": prompt}]}],
+                                                     "generationConfig": {"responseMimeType": "application/json", "temperature": temperature}})
+            except Exception as e:
+                print(f"  ({tag} did not write: {str(e)[:120]})"); return None
+            if r.status_code == 200:
+                try: d = parse(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+                except Exception: d = None
+                if d: print(f"  (written by {tag})"); return d
+                print(f"  ({tag}: answer was not valid JSON)"); return None
+            msg = r.text[:220].replace("\n", " ").strip()
+            if r.status_code in (500, 503) and attempt < tries - 1 and _t.time() + 30 < deadline:
+                print(f"  ({tag} busy {r.status_code} - waiting 30 s)"); _t.sleep(30); continue
+            print(f"  ({tag} did not write: {r.status_code} {msg[:160]})")
+            if r.status_code in (400, 401, 403, 404) or (r.status_code == 429 and ("quota" in msg.lower() or "limit: 0" in msg)): _DEAD.add(tag)
+            return None
+        return None
+    for rnd in range(2):                                              # round 2 = Google was only busy: wait, try every living model once more
+        if rnd == 1:
+            alive = [m for m in models for ki in range(1, len(keys) + 1) if f"{m} (key {ki})" not in _DEAD]
+            if not alive or _t.time() + 90 > deadline: break
+            print("  (Gemini busy - waiting 60 s for one more round)"); _t.sleep(60)
+        for model in models:
+            for ki, key in enumerate(keys, 1):
+                d = one(model, ki, key, 2 if rnd == 0 else 1)
+                if d: return d
+    if keys: print("  (no Gemini key could write" + (" in time" if _t.time() > deadline else "") + " - using the backup writer)")
     gk = os.getenv("GROQ_API_KEY")
     if gk:
         for model in ("openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct"):
@@ -224,7 +237,9 @@ hard-working farmer and lazy son - genre only, do not copy plots). Each idea: in
 conflict, emotional development, turning point, logical ending, clear moral, enough depth for 15-20 minutes. Write in Hindi (Devanagari).
 JSON only: {"ideas": [{"no": 1, "title": "...", "characters": "...", "concept": "...", "conflict": "...", "twist": "...", "moral": "...", "score": 1-10}]}
 "score" = how strong the idea is for a viral YouTube moral story.""")
+    d = d if isinstance(d, dict) else {}
     ideas = [i for i in d.get("ideas", []) if isinstance(i, dict) and i.get("title")][:15]
+    if not ideas: raise SystemExit("STOPPED: no AI could write story ideas today (see the lines above) - try again later")
     fresh = [i for i in ideas if i["title"] not in used]
     ideas = fresh or ideas
     P.save("ideas.json", ideas)
