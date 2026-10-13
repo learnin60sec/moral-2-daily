@@ -414,3 +414,51 @@
 [17:07:14 + 39.2 min] STEP 5 video
 [17:10:47 + 42.7 min]    QC: CORRECTED & COMPLETE
 [17:10:47 + 42.7 min] === DONE in 43 min ===
+[17:57:08 +  0.0 min] === CLOUD DAILY: 0.5-min video, AI clips: ALL pictures ===
+[17:57:08 +  0.0 min]     style: 2d_mystery | picture model: schnell | film look: none | upload: no | Gemini keys: 2
+[17:57:08 +  0.0 min]    Kaggle can animate 60 pages today -> up to 5.4 min with a moving clip on EVERY page
+[17:57:08 +  0.0 min] STEP 1 story + voice
+[18:05:20 +  8.2 min]    आम के बाग में उड़ती परछाई: 7 pictures needed
+[18:05:20 +  8.2 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX schnell) in the same job as the clips
+[18:05:20 +  8.2 min] STEP 3+4 key moments -> Kaggle clips
+[18:05:20 +  8.2 min]    prompt 001.png (written by story text (picture drawn on Kaggle)): A moonlit mango orchard at midnight, dark and eerie, with strange glowing shadows flickering on the trees. The...
+[18:05:20 +  8.2 min]    prompt 002.png (written by story text (picture drawn on Kaggle)): A village street beside the orchard at night, a flickering street lamp casting wavering light as villagers whi...
+[18:05:20 +  8.2 min]    prompt 003.png (written by story text (picture drawn on Kaggle)): The entrance of the mango orchard, a flashlight beam cutting through the darkness as चतुर चिंटू says "डरना मत!...
+[18:05:20 +  8.2 min]    prompt 004.png (written by story text (picture drawn on Kaggle)): Deep inside the orchard, shadows dance among the branches while माली काका crouches behind चतुर चिंटू, who shin...
+[18:05:20 +  8.2 min]    prompt 005.png (written by story text (picture drawn on Kaggle)): Under a large mango tree, a sudden bright flashlight beam reveals a tiny trembling monkey wearing a lost jacke...
+[18:05:20 +  8.2 min]    prompt 006.png (written by story text (picture drawn on Kaggle)): Under the mango tree, moonlight illuminates the funny monkey as चतुर चिंटू gently offers it a mango, making th...
+[18:05:20 +  8.2 min]    prompt 007.png (written by story text (picture drawn on Kaggle)): The monkey happily eats the mango while the villagers burst into laughter around them. The characters make sma...
+[18:05:20 +  8.2 min]    7 pictures will be drawn on Kaggle with ComfyUI (FLUX schnell)
+[18:05:20 +  8.2 min]    account 1: 18.7 h used this Kaggle week -> room for 12 clips today
+[18:05:20 +  8.2 min]    account 2: 0.1 h used this Kaggle week -> room for 12 clips today
+[18:05:20 +  8.2 min]    account 3: 0.1 h used this Kaggle week -> room for 12 clips today
+[18:05:20 +  8.2 min]    account 4: 0.1 h used this Kaggle week -> room for 12 clips today
+[18:05:20 +  8.2 min]    account 5: 0.1 h used this Kaggle week -> room for 12 clips today
+[18:05:30 +  8.4 min]    Kaggle job started on account 2 (kdlmeesho): 1 clips, pictures by schnell, about 39 min
+[18:05:42 +  8.6 min]    Kaggle job started on account 3 (morel3ac): 2 clips, pictures by schnell, about 58 min
+[18:05:50 +  8.7 min]    Kaggle job started on account 4 (shabana4ac): 2 clips, pictures by schnell, about 58 min
+[18:06:00 +  8.9 min]    Kaggle job started on account 5 (jaibunissa5ac): 2 clips, pictures by schnell, about 58 min
+[18:12:13 + 15.1 min]    Kaggle working ... 0 of 4 accounts finished
+[18:27:44 + 30.6 min]    Kaggle working ... 0 of 4 accounts finished
+[18:42:11 + 45.1 min]    Kaggle working ... 1 of 4 accounts finished
+[18:51:22 + 54.2 min]    account 1: Kaggle job status = 1013-180520-kaggle2 has status "kernelworkerstatus.complete"
+[18:51:26 + 54.3 min]    account 1 report: pictures 1/1, clips 1/1, 31.6 min on Kaggle, smooth 32 fps: yes, sharper clips: 1
+[18:51:26 + 54.3 min]    picture 004.png drawn on Kaggle
+[18:51:26 + 54.3 min]    account 2: Kaggle job status = 1013-180530-kaggle3 has status "kernelworkerstatus.complete"
+[18:51:30 + 54.4 min]    account 2 report: pictures 2/2, clips 2/2, 44.3 min on Kaggle, smooth 32 fps: yes, sharper clips: 2
+[18:51:30 + 54.4 min]    picture 002.png drawn on Kaggle
+[18:51:31 + 54.4 min]    picture 006.png drawn on Kaggle
+[18:51:31 + 54.4 min]    account 3: Kaggle job status = 1013-180542-kaggle4 has status "kernelworkerstatus.complete"
+[18:51:34 + 54.4 min]    account 3 report: pictures 2/2, clips 2/2, 40.3 min on Kaggle, smooth 32 fps: yes, sharper clips: 2
+[18:51:35 + 54.5 min]    picture 007.png drawn on Kaggle
+[18:51:35 + 54.5 min]    picture 003.png drawn on Kaggle
+[18:51:35 + 54.5 min]    account 4: Kaggle job status = 1013-180550-kaggle5 has status "kernelworkerstatus.complete"
+[18:51:39 + 54.5 min]    account 4 report: pictures 2/2, clips 2/2, 42.1 min on Kaggle, smooth 32 fps: yes, sharper clips: 2
+[18:51:39 + 54.5 min]    picture 001.png drawn on Kaggle
+[18:51:40 + 54.5 min]    picture 005.png drawn on Kaggle
+[18:51:40 + 54.5 min]    7 AI clips received (of 7)
+[18:51:40 + 54.5 min] STEP 4b clip doctor
+[18:51:52 + 54.7 min]    CLIP DOCTOR: 7 of 7 clips passed
+[18:51:52 + 54.7 min] STEP 5 video
+[18:59:37 + 62.5 min]    QC: CORRECTED & COMPLETE
+[18:59:37 + 62.5 min] === DONE in 62 min ===
