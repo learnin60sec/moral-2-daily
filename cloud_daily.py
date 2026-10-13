@@ -136,9 +136,9 @@ def kaggle_accounts():
 
 
 CLIP_MIN = float(os.getenv("M2_MIN_PER_CLIP", "17.5"))
-IMAGE_MODEL = os.getenv("M2_IMAGE_MODEL", "kontext").lower()          # kontext = same characters on every page (slower) | schnell = fast
-IMG_MIN = 4.0 if IMAGE_MODEL == "kontext" else 0.6                  # minutes per picture on a Kaggle T4
-SETUP_MIN = 25.0 if IMAGE_MODEL == "kontext" else 17.0
+IMAGE_MODEL = os.getenv("M2_IMAGE_MODEL", "schnell").lower()          # kontext = same characters on every page (slower) | schnell = fast
+IMG_MIN = {"kontext": 4.0, "kontext_scene": 6.0}.get(IMAGE_MODEL, 0.6)   # minutes per picture on a Kaggle T4 (scene + character edit = ~6)
+SETUP_MIN = {"kontext": 25.0, "kontext_scene": 30.0}.get(IMAGE_MODEL, 17.0)
 SMOOTH = os.getenv("M2_SMOOTH", "1") == "1"; UPSCALE = os.getenv("M2_UPSCALE", "1") == "1"
 ENH_MIN = (0.5 if SMOOTH else 0) + (0.8 if UPSCALE else 0)           # RIFE 16->32 fps + cartoon upscaler, per clip
 SETUP_MIN += 3 if (SMOOTH or UPSCALE) else 0
@@ -253,7 +253,7 @@ def kaggle_clips(P, st, pages):
                                   "static camera, nothing enters the frame from the edges, nothing covers any face. Premium 2D cartoon style, the same "
                                   "characters with exactly the same faces, clothes and colours.")), "story text (picture drawn on Kaggle)"
         say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
-    if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI ({'FLUX Kontext + cast sheet' if IMAGE_MODEL == 'kontext' else 'FLUX schnell'})")
+    if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI ({ {'kontext': 'FLUX Kontext + cast sheet', 'kontext_scene': 'schnell scene + Kontext character edit'}.get(IMAGE_MODEL, 'FLUX schnell') })")
     names = sorted(prompts); jobs = []
     led = ledger(); room = {a["name"]: room_today(a, led) for a in accs}
     for n, a in enumerate(accs):
@@ -421,7 +421,7 @@ def main():
     say(f"   {st.get('title', '')}: {len(st['pictures'])} pictures needed")
     src_ = os.getenv("M2_PICTURES", "kaggle").lower()
     if src_ == "kaggle" and kaggle_accounts():                        # pictures drawn on Kaggle with ComfyUI (FLUX), no Cloudflare limits
-        say(f"STEP 2 pictures: drawn on Kaggle with ComfyUI ({'FLUX Kontext - same characters' if IMAGE_MODEL == 'kontext' else 'FLUX schnell'}) in the same job as the clips"); made = 0
+        say(f"STEP 2 pictures: drawn on Kaggle with ComfyUI ({ {'kontext': 'FLUX Kontext - same characters', 'kontext_scene': 'FLUX schnell scenes + Kontext character edit'}.get(IMAGE_MODEL, 'FLUX schnell') }) in the same job as the clips"); made = 0
     else:
         say("STEP 2 pictures (Cloudflare)"); made = make_pictures(P, st); say(f"   {made} pictures made")
     if src_ == "kaggle" and kaggle_accounts():
