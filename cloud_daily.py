@@ -188,7 +188,8 @@ def kaggle_cli(*args, acc=None, check=False):
 def start_job(acc, P, names, prompts, tag, draw_only=()):
     """upload this run's pictures + prompts as a NEW dataset (unique name -> Kaggle can never use an old one) and start the job"""
     stamp = time.strftime("%Y%m%d-%H%M%S"); job_id = f"{stamp}-{tag.lower()}"
-    ds_slug = f"m2-job-{job_id}"; ds_id, k_id = f"{acc['user']}/{ds_slug}", f"{acc['user']}/m2-clips"
+    ds_slug = f"m2-job-{job_id}"; ds_id = f"{acc['user']}/{ds_slug}"
+    k_slug = f"m2-clips-{job_id}"; k_id = f"{acc['user']}/{k_slug}"          # its OWN notebook: runs at the same time never touch each other
     jd = f"/tmp/m2_job_{tag}"; shutil.rmtree(jd, ignore_errors=True); os.makedirs(jd)
     draw = {}
     for n in names:
@@ -211,7 +212,7 @@ def start_job(acc, P, names, prompts, tag, draw_only=()):
     if not kern: raise RuntimeError("kernel.py not found next to cloud_daily.py")
     code = open(kern[0], encoding="utf-8").read().replace('EXPECTED_JOB = None', f'EXPECTED_JOB = "{job_id}"', 1)
     open(os.path.join(kd, "kernel.py"), "w", encoding="utf-8").write(code)
-    json.dump({"id": k_id, "title": "m2-clips", "code_file": "kernel.py", "language": "python", "kernel_type": "script", "is_private": True,
+    json.dump({"id": k_id, "title": k_slug, "code_file": "kernel.py", "language": "python", "kernel_type": "script", "is_private": True,
                "enable_gpu": True, "enable_internet": True, "dataset_sources": [ds_id], "competition_sources": [], "kernel_sources": []},
               open(os.path.join(kd, "kernel-metadata.json"), "w"))
     kaggle_cli("kernels", "push", "-p", kd, acc=acc, check=True)
@@ -252,7 +253,7 @@ def kaggle_clips(P, st, pages):
                                   "static camera, nothing enters the frame from the edges, nothing covers any face. Premium 2D cartoon style, the same "
                                   "characters with exactly the same faces, clothes and colours.")), "story text (picture drawn on Kaggle)"
         say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
-    if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI (FLUX)")
+    if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI ({'FLUX Kontext + cast sheet' if IMAGE_MODEL == 'kontext' else 'FLUX schnell'})")
     names = sorted(prompts); jobs = []
     led = ledger(); room = {a["name"]: room_today(a, led) for a in accs}
     for n, a in enumerate(accs):
@@ -407,7 +408,7 @@ def clip_doctor(P):
 def main():
     minutes = float(os.getenv("M2_MINUTES", "3")); kc = os.getenv("M2_CLIPS", "all").lower()
     k = 0 if kc in ("all", "0", "") else int(kc)
-    say(f"=== CLOUD DAILY: {minutes:.0f}-min video, AI clips: {'ALL pictures' if k == 0 else k} ===")
+    say(f"=== CLOUD DAILY: {minutes:g}-min video, AI clips: {'ALL pictures' if k == 0 else k} ===")
     accs_ = kaggle_accounts()
     if accs_ and k == 0 and os.getenv("M2_FIT_TO_KAGGLE", "1") == "1":   # every page MUST become a clip -> the story only as long as Kaggle can animate today
         led_ = ledger(); can = sum(room_today(a, led_) for a in accs_)
@@ -420,7 +421,7 @@ def main():
     say(f"   {st.get('title', '')}: {len(st['pictures'])} pictures needed")
     src_ = os.getenv("M2_PICTURES", "kaggle").lower()
     if src_ == "kaggle" and kaggle_accounts():                        # pictures drawn on Kaggle with ComfyUI (FLUX), no Cloudflare limits
-        say("STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX) in the same job as the clips"); made = 0
+        say(f"STEP 2 pictures: drawn on Kaggle with ComfyUI ({'FLUX Kontext - same characters' if IMAGE_MODEL == 'kontext' else 'FLUX schnell'}) in the same job as the clips"); made = 0
     else:
         say("STEP 2 pictures (Cloudflare)"); made = make_pictures(P, st); say(f"   {made} pictures made")
     if src_ == "kaggle" and kaggle_accounts():

@@ -87,21 +87,33 @@ def ask(prompt):
 
 
 def ask_writer(prompt, temperature=0.9):
-    """the BEST writer for stories: Gemini 2.5 Pro -> Gemini Flash -> GPT-OSS-120B -> the normal ask(). JSON answers only."""
-    import requests
-    key = os.getenv("GEMINI_API_KEY")
-    if key:
-        for n in [m for m in (os.getenv("M2_WRITER_MODEL", "gemini-2.5-pro"), "gemini-pro-latest", "gemini-flash-latest", "gemini-2.5-flash") if m and m not in _DEAD]:
-            try:
-                r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{n}:generateContent", headers={"x-goog-api-key": key}, timeout=300,
-                                  json={"contents": [{"parts": [{"text": prompt}]}],
-                                        "generationConfig": {"responseMimeType": "application/json", "temperature": temperature}})
+    """stories are written by GEMINI: 2.5 Pro on key 1 and key 2, then Flash on key 1 and key 2 (busy -> wait and retry).
+    Only if every Gemini try fails: GPT-OSS-120B / Kimi K2, then the normal ask(). Every failure reason is printed."""
+    import requests, time as _t
+    keys = [k for k in (os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_API_KEY2")) if k]
+    models = [m for m in dict.fromkeys((os.getenv("M2_WRITER_MODEL", "gemini-2.5-pro"), "gemini-pro-latest", "gemini-flash-latest", "gemini-2.5-flash")) if m]
+    for model in models:
+        for ki, key in enumerate(keys, 1):
+            tag = f"{model} (key {ki})"
+            if tag in _DEAD: continue
+            for attempt in range(3):
+                try:
+                    r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", headers={"x-goog-api-key": key},
+                                      timeout=300, json={"contents": [{"parts": [{"text": prompt}]}],
+                                                         "generationConfig": {"responseMimeType": "application/json", "temperature": temperature}})
+                except Exception as e:
+                    print(f"  ({tag} did not write: {str(e)[:120]})"); break
                 if r.status_code == 200:
-                    d = parse(r.json()["candidates"][0]["content"]["parts"][0]["text"])
-                    if d: print(f"  (written by {n})"); return d
-                elif r.status_code in (400, 403, 404): _DEAD.add(n)
-            except Exception:
-                pass
+                    try: d = parse(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+                    except Exception: d = None
+                    if d: print(f"  (written by {tag})"); return d
+                    print(f"  ({tag}: answer was not valid JSON)"); break
+                if r.status_code in (500, 503) and attempt < 2:
+                    print(f"  ({tag} busy {r.status_code} - waiting 20 s)"); _t.sleep(20); continue
+                print(f"  ({tag} did not write: {r.status_code} {r.text[:160].strip()})")
+                if r.status_code in (400, 403, 404, 429): _DEAD.add(tag)
+                break
+    if keys: print("  (no Gemini key could write - using the backup writer)")
     gk = os.getenv("GROQ_API_KEY")
     if gk:
         for model in ("openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct"):

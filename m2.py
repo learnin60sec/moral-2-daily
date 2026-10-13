@@ -68,7 +68,9 @@ Improve this story so families watch till the end. Rules:
 3. {'Plant 3 fair clues the viewer can notice before the reveal, include one false suspect, and make the reveal surprising but LOGICAL (no real ghosts or magic).' if MYSTERY else 'Clear conflict, emotional turning point and a satisfying ending.'}
    KEEP PEOPLE WATCHING: end EVERY part (except the last) with a small cliffhanger or question that makes the viewer need the next part;
    hold the big answer back until the last two parts; short sentences; one light funny moment; one warm emotional moment; no slow parts.
-4. Keep the SAME title, characters (names and looks), places and EXACTLY {len(beats)} parts, each about the same length as now. No '...', no line breaks.
+4. Keep the SAME title, characters (names and looks), places and EXACTLY {len(beats)} parts. LENGTH IS FIXED: part lengths in characters must stay
+   close to {[len(b["narration"]) for b in beats]} (each part within plus or minus 20 percent) because the voice and pictures are planned for this length.
+   Improve the words, do not add more. No '...', no line breaks.
 5. Family-friendly: no horror, no gore, no violence shown.
 Return the improved story in EXACTLY the same JSON shape.
 STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_tone": d.get("moral_tone"), "characters": d.get("characters"), "beats": beats}, ensure_ascii=False)}""", temperature=0.7)
