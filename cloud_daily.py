@@ -4,7 +4,7 @@ CLOUD DAILY - runs on GitHub every day, laptop can stay OFF.
  3 key moments + AI video prompts (Groq vision)   4 Kaggle job: ComfyUI + Wan 2.2 clips   5 video   6 YouTube upload
 Settings (env): M2_MINUTES 3 | M2_SECONDS_PER_PICTURE 5 | M2_CLIPS 10 | M2_KAGGLE_MINUTES 240 | M2_AUTO_UPLOAD 1
 """
-import os, sys, json, time, glob, shutil, base64, io, subprocess, re
+import os, sys, json, time, glob, shutil, base64, io, subprocess, re, datetime
 _ME = os.path.dirname(os.path.abspath(__file__))
 HERE = _ME if os.path.exists(os.path.join(_ME, "m2.py")) else os.path.dirname(_ME)   # flat repo or the moral_2 folder
 sys.path.insert(0, HERE)
@@ -127,10 +127,41 @@ def ai_prompt(pic, moment):
 def kaggle_accounts():
     """account 1 = KAGGLE_*, account 2 = KAGGLE2_* (each: username + key or api token)"""
     out = []
-    for pre in ("KAGGLE", "KAGGLE2"):
+    for pre in ("KAGGLE", "KAGGLE2", "KAGGLE3", "KAGGLE4", "KAGGLE5"):
         u, k, t = os.getenv(f"{pre}_USERNAME"), os.getenv(f"{pre}_KEY"), os.getenv(f"{pre}_API_TOKEN")
         if u and (k or t): out.append({"user": u, "key": k, "token": t, "name": pre})
     return out
+
+
+CLIP_MIN = float(os.getenv("M2_MIN_PER_CLIP", "17.5")); SETUP_MIN = 17.0
+WEEK_BUDGET = float(os.getenv("M2_KAGGLE_WEEKLY_MIN", "1740"))      # 29 of the 30 free hours (1 hour safety)
+LEDGER = os.path.join(HERE, "kaggle_usage.json")
+
+
+def week_start():
+    """Kaggle's GPU week (we count from Saturday 00:00 UTC; change with M2_QUOTA_RESET_WEEKDAY, Monday=0 ... Sunday=6)"""
+    wd = int(os.getenv("M2_QUOTA_RESET_WEEKDAY", "5"))
+    now = datetime.datetime.now(datetime.timezone.utc)
+    return (now - datetime.timedelta(days=(now.weekday() - wd) % 7)).strftime("%Y-%m-%d")
+
+
+def ledger():
+    try: d = json.load(open(LEDGER))
+    except Exception: d = {}
+    if d.get("week_start") != week_start(): d = {"week_start": week_start(), "used_min": {}, "full": []}
+    return d
+
+
+def save_ledger(d):
+    json.dump(d, open(LEDGER, "w"), indent=1)
+
+
+def room_today(acc, d):
+    """clips this account can still make today: what is left of the week, and what fits in one run"""
+    if acc["user"] in d.get("full", []): return 0
+    left = WEEK_BUDGET - d["used_min"].get(acc["user"], 0.0) - SETUP_MIN
+    per_run = float(os.getenv("M2_KAGGLE_MINUTES", "300")) - SETUP_MIN - 15
+    return max(0, int(min(left, per_run) // CLIP_MIN))
 
 
 def kaggle_cli(*args, acc=None, check=False):
@@ -145,7 +176,7 @@ def kaggle_cli(*args, acc=None, check=False):
     return r
 
 
-def start_job(acc, P, names, prompts, tag):
+def start_job(acc, P, names, prompts, tag, draw_only=()):
     """upload this run's pictures + prompts as a NEW dataset (unique name -> Kaggle can never use an old one) and start the job"""
     stamp = time.strftime("%Y%m%d-%H%M%S"); job_id = f"{stamp}-{tag.lower()}"
     ds_slug = f"m2-job-{job_id}"; ds_id, k_id = f"{acc['user']}/{ds_slug}", f"{acc['user']}/m2-clips"
@@ -155,7 +186,9 @@ def start_job(acc, P, names, prompts, tag):
         src = P.p(m2.pics_dir(P), n)
         if os.path.exists(src): shutil.copy(src, os.path.join(jd, n))
         else: draw[n] = DRAW.get(n, "")
-    json.dump({"job_id": job_id, "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5},
+    for n in draw_only: draw[n] = DRAW.get(n, "")                      # picture only, no clip
+    size = [int(v) for v in os.getenv("M2_CLIP_SIZE", "832x480").lower().split("x")]
+    json.dump({"job_id": job_id, "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size},
               open(os.path.join(jd, "job.json"), "w"))
     json.dump({"title": ds_slug, "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
     kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
@@ -197,12 +230,26 @@ def kaggle_clips(P, st, pages):
         say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
     if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI (FLUX)")
     names = sorted(prompts); jobs = []
-    for n, acc in enumerate(accs):                                     # pages shared out: 1st, 3rd, 5th ... / 2nd, 4th ...
-        mine = names[n::len(accs)]
-        if not mine: continue
+    led = ledger(); room = {a["name"]: room_today(a, led) for a in accs}
+    for n, a in enumerate(accs):
+        say(f"   account {n + 1}: {led['used_min'].get(a['user'], 0) / 60:.1f} h used this Kaggle week -> room for {room[a['name']]} clips today")
+    share = {a["name"]: [] for a in accs}; draw_only = {a["name"]: [] for a in accs}
+    pending = list(names)
+    while pending:                                                    # one page at a time to the account with the most room left
+        open_ = [a for a in accs if len(share[a["name"]]) < room[a["name"]]]
+        if not open_: break
+        a = max(open_, key=lambda x: room[x["name"]] - len(share[x["name"]])); share[a["name"]].append(pending.pop(0))
+    if pending:
+        say(f"   no Kaggle time left for {len(pending)} pages -> they stay living pictures (their pictures are still drawn)")
+        drawer = max(accs, key=lambda x: room[x["name"]] - len(share[x["name"]]))
+        draw_only[drawer["name"]] = [n for n in pending if n in DRAW]
+    for n, acc in enumerate(accs):
+        mine, extra = share[acc["name"]], draw_only[acc["name"]]
+        if not mine and not extra: continue
         try:
-            jobs.append((acc, start_job(acc, P, mine, prompts, acc["name"]), mine))
-            say(f"   Kaggle job started on account {n + 1} ({acc['user']}): {len(mine)} clips, about {len(mine) * 15 + 20} min")
+            jobs.append((acc, start_job(acc, P, mine, prompts, acc["name"], extra), mine))
+            say(f"   Kaggle job started on account {n + 1} ({acc['user']}): {len(mine)} clips" + (f" + {len(extra)} pictures only" if extra else "")
+                + f", about {int(len(mine) * CLIP_MIN + SETUP_MIN)} min")
         except Exception as e:
             say(f"   account {n + 1} could not start: {str(e)[:200]}")
     limit = time.time() + 60 * float(os.getenv("M2_KAGGLE_MINUTES", "300")); done = {}
@@ -217,6 +264,8 @@ def kaggle_clips(P, st, pages):
     for n_acc, (acc, k_id, mine) in enumerate(jobs, 1):
         stt = done.get(k_id + acc["name"], "not finished in time")
         say(f"   account {n_acc}: Kaggle job status = {stt.strip()[-60:]}")
+        if "quota" in stt.lower():
+            led = ledger(); led.setdefault("full", []).append(acc["user"]); save_ledger(led); say(f"   account {n_acc}: weekly GPU quota used up")
         od = f"/tmp/m2_out_{acc['name']}"; shutil.rmtree(od, ignore_errors=True); os.makedirs(od)
         try: kaggle_cli("kernels", "output", k_id, "-p", od, acc=acc)          # also after an error: whatever was made is used
         except Exception as e: say(f"   account {n_acc}: could not download the results ({str(e)[:120]})"); continue
@@ -231,6 +280,7 @@ def kaggle_clips(P, st, pages):
             say(f"   account {n_acc}: no job report -> results not trusted, NOT used"); continue
         if rep:
             r_ = json.load(open(rep[0]))
+            led = ledger(); led["used_min"][acc["user"]] = round(led["used_min"].get(acc["user"], 0.0) + float(r_.get("minutes") or 0), 1); save_ledger(led)
             say(f"   account {n_acc} report: pictures {len(r_.get('pictures_made', []))}/{len(r_.get('pictures_asked', []))}, "
                 f"clips {len(r_.get('clips_made', []))}/{len(r_.get('clips_asked', []))}, {r_.get('minutes')} min on Kaggle")
             if len(r_.get("clips_made", [])) < len(r_.get("clips_asked", [])):
@@ -363,6 +413,8 @@ def main():
             import upload as U; info = U.upload_m2(P); say(f"   {info['url'] + ' (' + info['mode'] + ')' if info else 'not uploaded (QC)'}")
         except Exception as e: say(f"   upload ERROR: {str(e)[:200]}")
     shutil.copy(P.p("FINAL.mp4"), os.path.join(HERE, "FINAL_TODAY.mp4"))
+    ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    open(os.path.join(HERE, "last_done.txt"), "w").write(datetime.datetime.now(ist).strftime("%Y-%m-%d"))   # the backup alarm skips today
     say(f"=== DONE in {(time.time() - T0) / 60:.0f} min ===")
 
 
