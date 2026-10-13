@@ -323,3 +323,94 @@
 [16:16:33 +  4.7 min]    Kaggle job started on account 3 (morel3ac): 2 clips, pictures by schnell, about 58 min
 [16:17:03 +  5.2 min]    Kaggle job started on account 4 (shabana4ac): 2 clips, pictures by schnell, about 58 min
 [16:17:34 +  5.7 min]    Kaggle job started on account 5 (jaibunissa5ac): 1 clips, pictures by schnell, about 39 min
+[16:28:04 +  0.0 min] === CLOUD DAILY: 0.5-min video, AI clips: ALL pictures ===
+[16:28:04 +  0.0 min]    Kaggle can animate 60 pages today -> up to 5.4 min with a moving clip on EVERY page
+[16:28:04 +  0.0 min] STEP 1 story + voice
+[16:33:34 +  5.5 min]    गायब बकरी की पहेली: 6 pictures needed
+[16:33:34 +  5.5 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX schnell) in the same job as the clips
+[16:33:34 +  5.5 min] STEP 3+4 key moments -> Kaggle clips
+[16:33:34 +  5.5 min]    prompt 001.png (written by story text (picture drawn on Kaggle)): Rohan stands in the misty village lane looking down at a brass goat bell lying on the dusty ground. The charac...
+[16:33:34 +  5.5 min]    prompt 002.png (written by story text (picture drawn on Kaggle)): Dadi stands in the courtyard gesturing toward the village dog sitting calmly by the door while Rohan looks on ...
+[16:33:34 +  5.5 min]    prompt 003.png (written by story text (picture drawn on Kaggle)): Rohan inspects a broken wooden fence near the village well and points at muddy hoof prints leading toward the ...
+[16:33:34 +  5.5 min]    prompt 004.png (written by story text (picture drawn on Kaggle)): Rohan leans closer to the edge of the old stone well with an expression of concern, hearing a faint noise comi...
+[16:33:34 +  5.5 min]    prompt 005.png (written by story text (picture drawn on Kaggle)): Rohan looks into the well to see the goat tangled in a discarded rope, struggling slightly. The characters mak...
+[16:33:34 +  5.5 min]    prompt 006.png (written by story text (picture drawn on Kaggle)): Rohan leads the rescued goat back into the village square while Dadi watches proudly and the village dog follo...
+[16:33:34 +  5.5 min]    6 pictures will be drawn on Kaggle with ComfyUI (FLUX schnell)
+[16:33:34 +  5.5 min]    account 1: 18.7 h used this Kaggle week -> room for 12 clips today
+[16:33:34 +  5.5 min]    account 2: 0.0 h used this Kaggle week -> room for 12 clips today
+[16:33:34 +  5.5 min]    account 3: 0.0 h used this Kaggle week -> room for 12 clips today
+[16:33:34 +  5.5 min]    account 4: 0.0 h used this Kaggle week -> room for 12 clips today
+[16:33:34 +  5.5 min]    account 5: 0.0 h used this Kaggle week -> room for 12 clips today
+[16:34:07 +  6.0 min]    Kaggle job started on account 2 (kdlmeesho): 2 clips, pictures by schnell, about 58 min
+[16:34:37 +  6.6 min]    Kaggle job started on account 3 (morel3ac): 2 clips, pictures by schnell, about 58 min
+[16:35:07 +  7.0 min]    Kaggle job started on account 4 (shabana4ac): 1 clips, pictures by schnell, about 39 min
+[16:35:36 +  7.5 min]    Kaggle job started on account 5 (jaibunissa5ac): 1 clips, pictures by schnell, about 39 min
+[16:43:49 + 15.7 min]    Kaggle working ... 1 of 4 accounts finished
+[16:58:56 + 30.9 min]    Kaggle working ... 3 of 4 accounts finished
+[17:07:00 + 38.9 min]    account 1: Kaggle job status = 1013-163334-kaggle2 has status "kernelworkerstatus.complete"
+[17:07:03 + 39.0 min]    account 1 report: pictures 2/2, clips 0/2, 9.0 min on Kaggle, smooth 32 fps: yes, sharper clips: 0
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: torch_compile
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: dtype
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m Output will be ignored
+[17:07:03 + 39.0 min]       ComfyUI: [1m[33m[WARNING][0m invalid prompt: {'type': 'prompt_outputs_failed_validation', 'message': 'Prompt outputs failed validation', 'details': '', 'extra_info': 
+[17:07:03 + 39.0 min]       ComfyUI: [32m[INFO][0m got prompt
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m Failed to validate prompt for output 16:
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m * RIFE VFI 17:
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: batch_size
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: torch_compile
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: dtype
+[17:07:03 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m Output will be ignored
+[17:07:03 + 39.0 min]       ComfyUI: [1m[33m[WARNING][0m invalid prompt: {'type': 'prompt_outputs_failed_validation', 'message': 'Prompt outputs failed validation', 'details': '', 'extra_info': 
+[17:07:03 + 39.0 min]    picture 001.png drawn on Kaggle
+[17:07:04 + 39.0 min]    picture 005.png drawn on Kaggle
+[17:07:04 + 39.0 min]    account 2: Kaggle job status = 1013-163407-kaggle3 has status "kernelworkerstatus.complete"
+[17:07:07 + 39.0 min]    account 2 report: pictures 2/2, clips 0/2, 8.7 min on Kaggle, smooth 32 fps: yes, sharper clips: 0
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: dtype
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: torch_compile
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m Output will be ignored
+[17:07:07 + 39.0 min]       ComfyUI: [1m[33m[WARNING][0m invalid prompt: {'type': 'prompt_outputs_failed_validation', 'message': 'Prompt outputs failed validation', 'details': '', 'extra_info': 
+[17:07:07 + 39.0 min]       ComfyUI: [32m[INFO][0m got prompt
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m Failed to validate prompt for output 16:
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m * RIFE VFI 17:
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: batch_size
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: dtype
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: torch_compile
+[17:07:07 + 39.0 min]       ComfyUI: [1m[31m[ERROR][0m Output will be ignored
+[17:07:07 + 39.0 min]       ComfyUI: [1m[33m[WARNING][0m invalid prompt: {'type': 'prompt_outputs_failed_validation', 'message': 'Prompt outputs failed validation', 'details': '', 'extra_info': 
+[17:07:07 + 39.1 min]    picture 002.png drawn on Kaggle
+[17:07:07 + 39.1 min]    picture 006.png drawn on Kaggle
+[17:07:07 + 39.1 min]    account 3: Kaggle job status = 1013-163437-kaggle4 has status "kernelworkerstatus.complete"
+[17:07:11 + 39.1 min]    account 3 report: pictures 1/1, clips 0/1, 8.8 min on Kaggle, smooth 32 fps: yes, sharper clips: 0
+[17:07:11 + 39.1 min]       ComfyUI: [32m[INFO][0m Using RAM pressure cache.
+[17:07:11 + 39.1 min]       ComfyUI: [32m[INFO][0m Starting server
+[17:07:11 + 39.1 min]       ComfyUI: 
+[17:07:11 + 39.1 min]       ComfyUI: [32m[INFO][0m To see the GUI go to: http://127.0.0.1:8188
+[17:07:11 + 39.1 min]       ComfyUI: [32m[INFO][0m got prompt
+[17:07:11 + 39.1 min]       ComfyUI: [1m[31m[ERROR][0m Failed to validate prompt for output 16:
+[17:07:11 + 39.1 min]       ComfyUI: [1m[31m[ERROR][0m * RIFE VFI 17:
+[17:07:11 + 39.1 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: torch_compile
+[17:07:11 + 39.1 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: batch_size
+[17:07:11 + 39.1 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: dtype
+[17:07:11 + 39.1 min]       ComfyUI: [1m[31m[ERROR][0m Output will be ignored
+[17:07:11 + 39.1 min]       ComfyUI: [1m[33m[WARNING][0m invalid prompt: {'type': 'prompt_outputs_failed_validation', 'message': 'Prompt outputs failed validation', 'details': '', 'extra_info': 
+[17:07:11 + 39.1 min]    picture 003.png drawn on Kaggle
+[17:07:11 + 39.1 min]    account 4: Kaggle job status = 1013-163507-kaggle5 has status "kernelworkerstatus.complete"
+[17:07:14 + 39.2 min]    account 4 report: pictures 1/1, clips 0/1, 8.4 min on Kaggle, smooth 32 fps: yes, sharper clips: 0
+[17:07:14 + 39.2 min]       ComfyUI: [32m[INFO][0m Using RAM pressure cache.
+[17:07:14 + 39.2 min]       ComfyUI: [32m[INFO][0m Starting server
+[17:07:14 + 39.2 min]       ComfyUI: 
+[17:07:14 + 39.2 min]       ComfyUI: [32m[INFO][0m To see the GUI go to: http://127.0.0.1:8188
+[17:07:14 + 39.2 min]       ComfyUI: [32m[INFO][0m got prompt
+[17:07:14 + 39.2 min]       ComfyUI: [1m[31m[ERROR][0m Failed to validate prompt for output 16:
+[17:07:14 + 39.2 min]       ComfyUI: [1m[31m[ERROR][0m * RIFE VFI 17:
+[17:07:14 + 39.2 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: torch_compile
+[17:07:14 + 39.2 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: dtype
+[17:07:14 + 39.2 min]       ComfyUI: [1m[31m[ERROR][0m   - Required input is missing: batch_size
+[17:07:14 + 39.2 min]       ComfyUI: [1m[31m[ERROR][0m Output will be ignored
+[17:07:14 + 39.2 min]       ComfyUI: [1m[33m[WARNING][0m invalid prompt: {'type': 'prompt_outputs_failed_validation', 'message': 'Prompt outputs failed validation', 'details': '', 'extra_info': 
+[17:07:14 + 39.2 min]    picture 004.png drawn on Kaggle
+[17:07:14 + 39.2 min]    0 AI clips received (of 6)
+[17:07:14 + 39.2 min] STEP 4b clip doctor
+[17:07:14 + 39.2 min] STEP 5 video
+[17:10:47 + 42.7 min]    QC: CORRECTED & COMPLETE
+[17:10:47 + 42.7 min] === DONE in 43 min ===
