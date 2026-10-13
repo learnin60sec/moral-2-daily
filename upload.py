@@ -146,6 +146,7 @@ PLAYLISTS = {   # title: (description, words that send a story there)
     "Honesty Stories": ("Truth always wins - stories about honesty.", ["ईमानदार", "ईमानदारी", "सच", "सच्चाई", "honest", "truth"]),
     "Friendship & Family": ("The sweetness of relationships - friends, brothers, parents.", ["दोस्त", "मित्र", "दोस्ती", "परिवार", "भाई", "बहन", "माँ", "पिता", "दादी", "दादा", "friend", "family"]),
     "Greed & Lessons": ("What greed brings, and what it teaches.", ["लालच", "लालची", "सूदखोर", "साहूकार", "घमंड", "greed", "greedy"]),
+    "Mystery Stories": ("Suspense and mystery stories with a clever twist.", ["रहस्य", "रहस्यमय", "राज़", "गायब", "चोरी", "mystery", "secret"]),
 }
 
 
@@ -190,7 +191,10 @@ def upload_m2(P, slot=0):
     st = P.load("story.json"); sys.path.insert(0, HERE); import studio as S
     text = None
     try:
-        text = S.ask(f"""Write YouTube text for a Hindi 2D cartoon moral story video. Title: "{st.get('title', '')}". Moral: "{st.get('moral', '')}".
+        import m2 as _m2
+        kind_ = ("Hindi realistic cinematic MYSTERY story video (ends with | Mystery Story in Hindi instead of | Hindi Kahani)" if _m2.MYSTERY
+                 else "Hindi 2D cartoon moral story video")
+        text = S.ask(f"""Write YouTube text for a {kind_}. Title: "{st.get('title', '')}". Moral: "{st.get('moral', '')}".
 Story start: {' '.join(b['narration'] for b in st.get('beats', [])[:3])[:900]}
 JSON only: {{"title": "Hindi title under 70 characters, curious but honest, ending with | Hindi Kahani", "description": "Hindi, 5-7 lines:
 hook question, short summary without the ending, the moral, ask to subscribe", "tags": ["15 tags Hindi and Hinglish"], "thumbnail_text": "2-4 Hindi words"}}""")

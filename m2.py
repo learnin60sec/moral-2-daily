@@ -46,13 +46,17 @@ def story(minutes=4.0):
     S.stage1(P, True); idea = P.load("chosen.json")
     n_beats = max(6, int(round(minutes * 3))); words = int(minutes * 60 * WORDS_PER_SEC)
     say(f"\n  writing the story (~{minutes:.0f} min, {n_beats} parts) ...")
-    d = S.ask(f"""Write the Hindi moral story "{idea['title']}" ({json.dumps(idea, ensure_ascii=False)}) for a {minutes:.0f}-minute narrated
-2D cartoon video told by ONE warm storyteller. About {words} Hindi words in total, split into EXACTLY {n_beats} consecutive parts.
+    kind = ("Hindi MYSTERY story (rahasya): a strange happening in an Indian village or small town, clues, rising suspense, a clever surprising "
+            "reveal at the end and one short lesson. Family-friendly suspense only: no gore, no horror, no violence shown, nothing too scary for children"
+            if MYSTERY else "Hindi moral story")
+    look_txt = "realistic cinematic" if REALISTIC else "2D cartoon"
+    d = S.ask(f"""Write the {kind} "{idea['title']}" ({json.dumps(idea, ensure_ascii=False)}) for a {minutes:.0f}-minute narrated
+{look_txt} video told by ONE storyteller{' with a gripping, suspenseful voice' if MYSTERY else ' with a warm voice'}. About {words} Hindi words in total, split into EXACTLY {n_beats} consecutive parts.
 Write it to be READ ALOUD in one smooth take: flowing sentences, natural Hindi, feelings shown through the words and punctuation
 (! ? , and dialogue in quotes) - never use '...' or line breaks inside a part.
 JSON only: {{"title": "...", "moral": "one short Hindi sentence", "moral_tone": "happy|sad|serious",
-"characters": [{{"name": "...", "look": "ONE fixed 2D cartoon design in English: age, body, face, hair, exact traditional Indian village clothes with colours"}}],
-"beats": [{{"narration": "Hindi text of this part", "place": "English: place + time of day"}}]}}""")
+"characters": [{{"name": "...", "look": "ONE fixed {'realistic appearance' if REALISTIC else '2D cartoon design'} in English: age, body, face, hair, skin tone, exact clothes with colours"}}],
+"beats": [{{"narration": "Hindi text of this part", "place": "English: place + time of day + light{' (mysterious mood)' if MYSTERY else ''}"}}]}}""")
     beats = [b for b in d.get("beats", []) if isinstance(b, dict) and b.get("narration")]
     for b in beats:
         t = re.sub(r"\s*(\.{2,}|…)\s*", ", ", str(b["narration"]))          # '...' makes the voice stop -> comma
@@ -102,6 +106,12 @@ JSON only: {{"parts": [{{"index": 0, "pictures": [{{"action": "English: exactly 
 
 
 
+STYLE_PACK = os.getenv("M2_STYLE", "2d_moral").lower()
+REALISTIC = STYLE_PACK.startswith("realistic"); MYSTERY = "mystery" in STYLE_PACK
+STYLE_REAL = ("Style: cinematic photorealistic film still, shot on a 35mm cinema camera, realistic Indian people and real locations, natural skin "
+              "texture, dramatic moody lighting with soft shadows, shallow depth of field, subtle film grain, rich but natural colours, high detail. "
+              "Wide 16:9 landscape frame, the whole head of every person inside the frame. No text, no letters, no numbers, no captions, no watermark. "
+              "Not a cartoon, not anime, not an illustration, not a painting.")
 STYLE_FULL = ("Style: premium hand-drawn 2D cartoon illustration for an Indian village moral story, clean ink outlines, flat painted colours, "
               "soft cel shading, expressive cartoon faces, detailed illustrated rural Indian village background, warm cinematic light. "
               "Wide 16:9 landscape frame, characters full body with the whole head inside the frame. "
@@ -110,6 +120,10 @@ STYLE_FULL = ("Style: premium hand-drawn 2D cartoon illustration for an Indian v
 
 def full_prompt(p, looks, roll=None):
     who = [f"{n} ({looks[n]})" for n in p.get("characters", []) if n in looks]
+    if REALISTIC:
+        return ((f"ROLL {roll:03d}. (the roll number is only for me - never draw it) " if roll else "") + f"Create one picture. Place: {p.get('place', '')}. "
+                f"What is happening: {p['action']}. " + (f"People in the picture, looking exactly like this every time: {'; '.join(who)}. " if who else
+                "No people in this picture. ") + STYLE_REAL)
     return ((f"ROLL {roll:03d}. (the roll number is only for me - never draw it) " if roll else "") + f"Create one picture. Place: {p.get('place', '')}. What is happening: {p['action']}. "
             + (f"Characters in the picture, drawn exactly like this every time: {'; '.join(who)}. " if who else "No people in this picture. ")
             + "Traditional Indian village clothes only. " + STYLE_FULL)
@@ -1036,6 +1050,7 @@ def short_voice(P, name, text, tone):
 
 
 def moral_tone(st):
+    if MYSTERY: return "serious"
     t = str(st.get("moral_tone", "")).lower()
     if t in TONES: return t
     m = str(st.get("moral", ""))
@@ -1095,6 +1110,7 @@ def pick_music(P, seconds, tone):
     if not files: files = sorted(glob.glob(os.path.join(HERE, "*.mp3")))          # flat GitHub repo: music next to m2.py
     if files:
         words = {"happy": ("happy", "joy", "bright", "khush"), "sad": ("sad", "emotional", "slow", "dukh"), "serious": ("calm", "soft", "serious")}[tone]
+        if MYSTERY: words = ("mystery", "suspense", "dark") + words
         good = [f for f in files if any(w in os.path.basename(f).lower() for w in words)] or files
         return good[hash(P.dir) % len(good)], "from the music folder"
     return make_music(P.p("work_music.wav"), seconds, tone), "made by the script (no copyright)"
@@ -1151,6 +1167,7 @@ ATMO_WORDS = {
 
 
 def atmosphere_for(place):
+    if REALISTIC: return {"fog"} if MYSTERY else set()                 # real footage: no drawn birds/leaves, only a soft mist for mystery
     pl = (place or "").lower()
     fx = {k for k, words in ATMO_WORDS.items() if any(w in pl for w in words)}
     if "rain" in fx: fx -= {"birds", "glow", "fireflies"}
@@ -1191,6 +1208,10 @@ class Atmosphere:
             for r_ in self.drops:
                 y = (r_[1] + r_[2] * t) % 760 - 40; x = (r_[0] - .35 * r_[2] * t) % 1400 - 60
                 d.line([(x, y), (x - 6, y + 18)], fill=(210, 220, 235, int(a * .55)), width=1)
+        if "fog" in fx:                                              # slow drifting mist
+            for k in range(6):
+                ph = (t * 0.03 + k / 6) % 1; x = -300 + ph * 1900; y = 430 + 120 * math.sin(k * 1.7 + t * 0.2); rr = 260 + 60 * math.sin(k)
+                d.ellipse((x - rr, y - rr * 0.35, x + rr, y + rr * 0.35), fill=(225, 230, 240, int(a * 0.10)))
         if "smoke" in fx:
             for k in range(7):
                 ph = (t * .12 + k / 7) % 1; x = 640 + 60 * math.sin(t * .7 + k) + ph * 40; y = 640 - ph * 420; rr = 18 + ph * 60

@@ -82,13 +82,15 @@ def key_pages(P, st, k):
 
 def ai_prompt(pic, moment):
     """the AI LOOKS at the picture and writes the Wan 2.2 prompt: Groq vision first, Gemini vision second, story text last"""
-    STYLE = " Premium 2D cartoon style, the same characters with exactly the same faces, clothes and colours."
+    STYLE = (" Cinematic realistic film footage, natural lifelike motion, soft dramatic light, the same people with exactly the same faces and clothes."
+             if m2.REALISTIC else " Premium 2D cartoon style, the same characters with exactly the same faces, clothes and colours.")
     fallback = (moment.rstrip(". ") + ". " if moment else "") + ("The characters make small natural movements, gentle wind moves the grass, "
                 "static camera, nothing enters the frame from the edges, nothing covers any face." + STYLE)
     from PIL import Image
     im = Image.open(pic).convert("RGB"); im.thumbnail((768, 768)); b = io.BytesIO(); im.save(b, "JPEG", quality=85)
     img64 = base64.b64encode(b.getvalue()).decode()
-    ask = ("You write prompts for the Wan 2.2 image-to-video model. Look at this 2D cartoon picture; it is the FIRST frame of a 5-second clip. "
+    ask = ("You write prompts for the Wan 2.2 image-to-video model. Look at this " + ("cinematic realistic" if m2.REALISTIC else "2D cartoon") +
+           " picture; it is the FIRST frame of a 5-second clip. " + ("The mood is suspense and mystery. " if m2.MYSTERY else "") + 
            "Write ONE English prompt of 50-80 words in this order: (1) the main character and ONE clear action that fits the picture"
            + (f" and this story moment: '{moment}'" if moment else "") + "; (2) one small movement for each other person or animal; "
            "(3) one gentle background movement (grass, clouds, smoke or water). Then end with exactly: 'Static camera. Nothing enters the frame "
@@ -188,7 +190,9 @@ def start_job(acc, P, names, prompts, tag, draw_only=()):
         else: draw[n] = DRAW.get(n, "")
     for n in draw_only: draw[n] = DRAW.get(n, "")                      # picture only, no clip
     size = [int(v) for v in os.getenv("M2_CLIP_SIZE", "832x480").lower().split("x")]
-    json.dump({"job_id": job_id, "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size},
+    negative = ("cartoon, anime, 2D, illustration, painting, CGI, plastic skin, waxy face, deformed hands, extra fingers, new people appearing, "
+                "objects turning into something else, morphing, distorted face, changing clothes, fast camera shake, text, watermark, flicker, blurry") if m2.REALISTIC else ""
+    json.dump({"job_id": job_id, "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size, "negative": negative},
               open(os.path.join(jd, "job.json"), "w"))
     json.dump({"title": ds_slug, "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
     kaggle_cli("datasets", "create", "-p", jd, "-r", "zip", acc=acc, check=True)
@@ -224,9 +228,11 @@ def kaggle_clips(P, st, pages):
             prompts[name], who = ai_prompt(P.p(m2.pics_dir(P), name), moment)
         else:                                                         # no picture yet: Kaggle draws it first (FLUX), prompt from the story
             DRAW[name] = m2.full_prompt(st["pictures"][i - 1], looks) + " Always the same character design and the same clothes in every picture."
-            prompts[name], who = (moment.rstrip(". ") + ". " if moment else "") + ("The characters make small natural movements, gentle wind moves the grass, "
+            prompts[name], who = (moment.rstrip(". ") + ". " if moment else "") + ("The characters make small natural movements, gentle wind moves the grass, " +
+                                  ("slow cinematic camera push-in, nothing enters the frame from the edges, nothing covers any face. Cinematic realistic film footage, natural "
+                                  "lifelike motion, the same people with exactly the same faces and clothes." if m2.REALISTIC else
                                   "static camera, nothing enters the frame from the edges, nothing covers any face. Premium 2D cartoon style, the same "
-                                  "characters with exactly the same faces, clothes and colours."), "story text (picture drawn on Kaggle)"
+                                  "characters with exactly the same faces, clothes and colours.")), "story text (picture drawn on Kaggle)"
         say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
     if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI (FLUX)")
     names = sorted(prompts); jobs = []
