@@ -55,6 +55,8 @@ def story(minutes=4.0):
 Write it to be READ ALOUD in one smooth take: flowing sentences, natural Hindi, feelings shown through the words and punctuation
 (! ? , and dialogue in quotes) - never use '...' or line breaks inside a part.
 JSON only: {{"title": "...", "moral": "one short Hindi sentence", "moral_tone": "happy|sad|serious",
+"hook": "Hindi, 1-2 short spoken sentences (max 22 words) for the first seconds of the video: the strangest or most exciting moment as a gripping question that makes people stay. NEVER reveal the answer or the ending.",
+"hook_part": "number of the part (0 = first) where that moment happens - never one of the last two parts",
 "characters": [{{"name": "...", "look": "ONE fixed {'realistic appearance' if REALISTIC else '2D cartoon design'} in English: age, body, face, hair, skin tone, exact clothes with colours"}}],
 "beats": [{{"narration": "Hindi text of this part", "place": "English: place + time of day + light{' (mysterious mood)' if MYSTERY else ''}"}}]}}""")
     d = d if isinstance(d, dict) else {}
@@ -75,13 +77,15 @@ Improve this story so families watch till the end. Rules:
    Improve the words, do not add more. No '...', no line breaks.
 5. Family-friendly: no horror, no gore, no violence shown.
 Return the improved story in EXACTLY the same JSON shape.
-STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_tone": d.get("moral_tone"), "characters": d.get("characters"), "beats": beats}, ensure_ascii=False)}""", temperature=0.7)
+6. Make the "hook" irresistible: max 22 words, a question about the strangest moment, never the answer.
+STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_tone": d.get("moral_tone"), "hook": d.get("hook"), "hook_part": d.get("hook_part"), "characters": d.get("characters"), "beats": beats}, ensure_ascii=False)}""", temperature=0.7)
             e = e if isinstance(e, dict) else {}                         # no answer at all -> the first version is kept
             eb = [b for b in e.get("beats", []) if isinstance(b, dict) and b.get("narration")]
             old_len = sum(len(b["narration"]) for b in beats); new_len = sum(len(b["narration"]) for b in eb)
             if len(eb) == len(beats) and 0.75 * old_len <= new_len <= 1.5 * old_len:
                 for ob, nb in zip(beats, eb): nb.setdefault("place", ob.get("place", ""))
-                beats = eb; d["moral"] = e.get("moral") or d.get("moral"); say("  story editor: improved version used")
+                beats = eb; d["moral"] = e.get("moral") or d.get("moral"); d["hook"] = e.get("hook") or d.get("hook")
+                say("  story editor: improved version used")
             else:
                 say(f"  story editor: answer did not keep the shape ({len(eb)} parts, length {new_len} vs {old_len}) - first version kept")
         except SystemExit:
@@ -91,16 +95,48 @@ STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_ton
         b["narration"] = re.sub(r"\s+", " ", t).replace(", ,", ",").strip()
     looks = {c["name"]: c.get("look", "") for c in d.get("characters", []) if isinstance(c, dict) and c.get("name")}
     title = d.get("title", idea["title"])
-    st = {"title": title, "moral": d.get("moral", ""), "moral_tone": d.get("moral_tone", "happy"), "characters": looks, "beats": beats, "pictures": []}
-    P.save("story.json", st)
-    text = " ".join(b["narration"].strip() for b in beats)
-    open(P.p("FULL_STORY.txt"), "w", encoding="utf-8").write(f"{title}\n\n" + "\n\n".join(b["narration"] for b in beats) + f"\n\nसीख: {d.get('moral', '')}")
-    say("  making the voice (one take) and measuring every part ...")
-    voice(P, text)
-    total = S.probe(P.p("FULL_VOICE.mp3"))[0]
+    hook = re.sub(r"\s+", " ", str(d.get("hook") or "")).replace("...", ",").replace("…", ",").strip()
+    if not hook:                                                    # no hook from the AI -> the first sentence of the story as a question
+        first = re.split(r"[।!?]", beats[0]["narration"])[0].strip()
+        hook = (first + "। आख़िर इसका राज़ क्या था?") if first else ""
+    try: hook_part = max(0, min(int(d.get("hook_part", 0)), max(0, len(beats) - 3)))
+    except Exception: hook_part = 0
+    st = {"title": title, "moral": d.get("moral", ""), "moral_tone": d.get("moral_tone", "happy"), "hook": hook, "hook_part": hook_part,
+          "characters": looks, "beats": beats, "pictures": []}
+    cap = float(os.getenv("M2_MAX_MINUTES", "0") or 0)                # the longest story Kaggle can animate today (0 = no limit)
+    for attempt in range(3):
+        st["beats"] = beats; P.save("story.json", st)
+        text = " ".join(b["narration"].strip() for b in beats)
+        open(P.p("FULL_STORY.txt"), "w", encoding="utf-8").write(f"{title}\n\n" + "\n\n".join(b["narration"] for b in beats) + f"\n\nसीख: {d.get('moral', '')}")
+        say("  making the voice (one take) and measuring every part ...")
+        voice(P, text)
+        total = S.probe(P.p("FULL_VOICE.mp3"))[0]
+        if not (cap >= 1.5 and total / 60 > cap * 1.03 and attempt < 2): break
+        ratio = cap * 60 * 0.97 / total; targets = [max(40, int(len(b["narration"]) * ratio)) for b in beats]
+        say(f"  the voice is {total / 60:.1f} min but only {cap:g} min can get moving clips today -> shortening the story to about {ratio * 100:.0f}% (try {attempt + 1})")
+        try:
+            e = S.ask_writer(f"""You are the chief editor of a hit Hindi YouTube story channel. This story is too long for today's video: SHORTEN it.
+Every part must get about {int(ratio * 100)} percent of its present length. Target length of each part in characters: {targets} (each within plus or minus 12 percent).
+Keep EXACTLY {len(beats)} parts, the same title, characters, places and order. Keep the hook, the clues, the cliffhanger at the end of each part,
+the surprising reveal near the end and the moral. Cut repetition, filler and long descriptions; short sentences. No '...', no line breaks. Hindi only.
+Return the shortened story in EXACTLY this JSON shape: {{"moral": "...", "beats": [{{"narration": "..."}}]}}
+STORY: {json.dumps({"moral": d.get("moral"), "beats": [{"narration": b["narration"]} for b in beats]}, ensure_ascii=False)}""", temperature=0.5)
+            e = e if isinstance(e, dict) else {}
+            eb = [b for b in e.get("beats", []) if isinstance(b, dict) and b.get("narration")]
+            new_len = sum(len(b["narration"]) for b in eb)
+            if len(eb) == len(beats) and 0.8 * sum(targets) <= new_len <= 1.15 * sum(targets):
+                for ob, nb in zip(beats, eb):
+                    nb["place"] = ob.get("place", ""); nb["narration"] = re.sub(r"\s+", " ", re.sub(r"\s*(\.{2,}|…)\s*", ", ", str(nb["narration"]))).strip()
+                beats = eb; d["moral"] = e.get("moral") or d.get("moral"); st["moral"] = d["moral"]
+                say(f"  story shortened: {sum(len(b['narration']) for b in eb)} characters")
+            else:
+                say(f"  shortening did not keep the shape ({len(eb)} parts, {new_len} characters, wanted {sum(targets)}) - this length is kept"); break
+        except SystemExit:
+            say("  shortening: no AI answered - this length is kept"); break
     bt = beat_times(P, st, total)
-    counts = [max(1, int(round((bt[i + 1] - bt[i]) / SEC_PER_PIC))) for i in range(len(beats))]
-    say(f"  video length {total / 60:.1f} min -> {sum(counts)} pictures (one every ~{SEC_PER_PIC:.0f} s), parts get: {counts}")
+    SEC_MAXP = float(os.getenv("M2_MAX_PAGE_SECONDS", "7.2"))          # a clip is 5 s (slowed to at most 0.62x = 8 s): a page must never be longer
+    counts = [max(1, int(round((bt[i + 1] - bt[i]) / SEC_PER_PIC)), int(math.ceil((bt[i + 1] - bt[i]) / SEC_MAXP))) for i in range(len(beats))]
+    say(f"  video length {total / 60:.1f} min -> {sum(counts)} pictures (one every ~{SEC_PER_PIC:.0f} s, never longer than {SEC_MAXP:g} s), parts get: {counts}")
     plan = "\n".join(f"{i}: [{counts[i]} pictures, {bt[i + 1] - bt[i]:.0f} s] {b['place']} - {b['narration'][:220]}" for i, b in enumerate(beats))
     m = S.ask(f"""For this Hindi story, write the picture moments of every part, like a flip book: same place and characters inside a part,
 the action moving forward a little in each picture, following what the narration says in that order. Give EXACTLY the number of
@@ -1016,28 +1052,28 @@ def word_starts(P, st, total, TI=0.0):
     return out
 
 
-def synced_slots(words, a, b, n, min_len):
-    """split one part into n picture slots at the moments the narrator reaches each piece (snapped to , । ! ?)"""
+def synced_slots(words, a, b, n, min_len, max_len=None):
+    """split one part into n picture slots, evenly in TIME, each cut at the moment the narrator reaches a word (preferably right after a , । ! ?
+    within 1.2 s of the ideal time). Slots are never shorter than min_len and, if max_len is given, never longer (else plain even slots)."""
     if not words or n <= 1: return [(a, b)]
     n = max(1, min(n, int((b - a) // min_len)))
     if n <= 1: return [(a, b)]
-    W = len(words); cuts = []
+    times = [w[0] for w in words]; W = len(words); cuts = []
     for k in range(1, n):
-        j = round(k * W / n); best = j
-        for d in range(0, 4):                                    # prefer a word right after a pause mark
-            for jj in (j + d, j - d):
-                if 0 < jj < W and words[jj - 1][1][-1:] in ",।!?;": best = jj; break
-            else: continue
-            break
-        cuts.append(best)
+        ideal = a + (b - a) * k / n
+        cand = [j for j in range(1, W) if abs(times[j] - ideal) <= 1.2] or [min(range(1, W), key=lambda j: abs(times[j] - ideal))]
+        pool = [j for j in cand if words[j - 1][1][-1:] in ",।!?;"] or cand
+        cuts.append(min(pool, key=lambda j: abs(times[j] - ideal)))
     cuts = sorted(set(c for c in cuts if 0 < c < W))
-    starts = [a] + [max(a, words[c][0] - 0.25) for c in cuts]     # change a moment BEFORE the word (the dissolve lands on it)
+    starts = [a] + [max(a, times[c] - 0.25) for c in cuts]           # change a moment BEFORE the word (the dissolve lands on it)
     slots = [(starts[i], starts[i + 1] if i + 1 < len(starts) else b) for i in range(len(starts))]
-    merged = []                                                  # never shorter than min_len
+    merged = []                                                      # never shorter than min_len
     for s0, s1 in slots:
         if merged and s1 - s0 < min_len: merged[-1] = (merged[-1][0], s1)
         else: merged.append((s0, s1))
     if len(merged) > 1 and merged[-1][1] - merged[-1][0] < min_len: merged[-2] = (merged[-2][0], merged[-1][1]); merged.pop()
+    if max_len and any(s1 - s0 > max_len for s0, s1 in merged):     # snapping made one too long -> plain even slots in time
+        merged = [(a + (b - a) * k / n, a + (b - a) * (k + 1) / n) for k in range(n)]
     return merged
 
 
@@ -1276,20 +1312,42 @@ def corner_logo():
 
 
 class ClipFrames:
-    """frames of an AI clip (clips/NNN.mp4) for the page that is being shown; played at normal speed, back-and-forth if the
-    page is shown longer than the clip"""
+    """frames of an AI clip (clips/NNN.mp4) for the page that is being shown. The decoded frames live in a temporary file on the DISK
+    (memory-mapped), not in RAM - a 5-s clip would otherwise need 415 MB (twice while two clips melt into each other)."""
     def __init__(self):
-        self.path, self.frames = None, []
+        self.path, self.frames, self._tmp = None, [], None
+    def _drop(self):
+        self.frames = []
+        if self._tmp:
+            try: os.remove(self._tmp)
+            except OSError: pass
+            self._tmp = None
+    def _load(self, path):
+        import numpy as np, tempfile
+        if path == self.path: return
+        self._drop(); self.path = path
+        fd, tmp = tempfile.mkstemp(suffix=".raw", prefix="m2clip_"); os.close(fd)
+        subprocess.run([S.ffmpeg(), "-y", "-v", "quiet", "-i", path, "-vf", "scale=1280:720:flags=lanczos,fps=30", "-f", "rawvideo", "-pix_fmt", "rgb24", tmp])
+        n = os.path.getsize(tmp) // (1280 * 720 * 3)
+        if n < 1: os.remove(tmp); return
+        self._tmp = tmp; self.frames = np.memmap(tmp, dtype=np.uint8, mode="r", shape=(n, 720, 1280, 3))
     def get(self, path, k):
         import numpy as np
-        if path != self.path:
-            raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-i", path, "-vf", "scale=1280:720:flags=lanczos,fps=30", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-                                 capture_output=True).stdout
-            self.frames = np.frombuffer(raw, np.uint8).reshape(-1, 720, 1280, 3) if raw else []
-            self.path = path
-        n = len(self.frames)
+        self._load(path); n = len(self.frames)
         if not n: return None
-        return self.frames[max(0, min(k, n - 1))].astype("float32")          # never plays backwards; the last frame is held
+        return np.asarray(self.frames[max(0, min(k, n - 1))]).astype("float32")      # never plays backwards; the last frame is held
+    def get_f(self, path, pos):
+        """the frame at a fractional position (30 frames per second): the two neighbours are blended, so slow motion stays smooth"""
+        import numpy as np
+        self._load(path); n = len(self.frames)
+        if not n: return None
+        pos = max(0.0, min(float(pos), n - 1.0)); i = int(pos); f = pos - i
+        a_ = np.asarray(self.frames[i]).astype("float32")
+        if f < 0.02 or i + 1 >= n: return a_
+        return a_ * (1 - f) + np.asarray(self.frames[i + 1]).astype("float32") * f
+    def __del__(self):
+        try: self._drop()
+        except Exception: pass
 
 
 def clip_for(P, picture_path):
@@ -1331,13 +1389,22 @@ def video(subtitles=True):
                  f"  Put the pictures in my_pics and run ONE_CLICK.bat (it takes them from there).")
     pics = [f for f in pics if os.path.basename(f) not in broken]
     have = {int(os.path.basename(f)[:3]): f for f in pics}
-    def pic_for(n):                                             # page without a picture -> nearest earlier picture
+    beat_of = {i + 1: p_.get("beat") for i, p_ in enumerate(st["pictures"])}
+    miss_ = [i for i in range(1, len(st["pictures"]) + 1) if i not in have]
+    if miss_: say(f"  WARNING: {len(miss_)} pages have no picture of their own: {miss_[:20]}")
+    def pic_for(n):                                             # page without a picture -> nearest picture of the same part, else the nearest earlier one
+        if n in have: return have[n]
+        same = [k for k in have if beat_of.get(k) == beat_of.get(n)]
+        if same: return have[min(same, key=lambda k: abs(k - n))]
         for k in range(n, 0, -1):
             if k in have: return have[k]
         return pics[0]
     say("[VIDEO 2/5] Title card + moral card + every picture timed to its spoken words ...")
     tone = moral_tone(st)
-    intro_v = short_voice(P, "INTRO_VOICE", f"आज की कहानी है, {st.get('title', '')}।", "happy")
+    hook = st.get("hook", "") if os.getenv("M2_HOOK", "1") == "1" else ""
+    intro_text = (f"{hook} आज की कहानी: {st.get('title', '')}।" if hook else f"आज की कहानी है, {st.get('title', '')}।")
+    intro_v = short_voice(P, "INTRO_VOICE", intro_text, "serious" if (hook and MYSTERY) else "happy")
+    if hook: say(f"  HOOK opening: {hook}")
     outro_v = short_voice(P, "MORAL_VOICE", f"तो दोस्तों, इस कहानी से हमें यह सीख मिलती है, {st.get('moral', '')}", tone)
     TI = (S.probe(intro_v)[0] + 1.2) if intro_v else 3.5
     TO = (S.probe(outro_v)[0] + 1.5) if outro_v else 4.0
@@ -1346,7 +1413,11 @@ def video(subtitles=True):
     marks = len([m for m in P.load("voice_marks.json", []) if m.get("kind") == "WordBoundary"])
     say(f"  title card {TI:.1f} s | story {story_len:.0f} s | moral card {TO:.1f} s ({tone} voice)")
     say(f"  {len(st['beats'])} story parts timed " + ("word-by-word from the voice" if marks else "by text length (voice gave no word times)"))
-    plan = [(0.0, TI, main_character_picture(P, st, pics), -1)]
+    hook_pic = None
+    if hook:                                                        # the strangest moment's own (moving) clip opens the video
+        hp = int(st.get("hook_part", 0)); idx = [i + 1 for i, p_ in enumerate(st["pictures"]) if p_.get("beat") == hp]
+        if idx: hook_pic = pic_for(idx[0])
+    plan = [(0.0, TI, hook_pic or main_character_picture(P, st, pics), -1)]
     ws = word_starts(P, st, story_len, TI)
     flip = os.getenv("M2_STYLE", "story").lower() == "flip"        # old fast flip-book only if asked for
     HOLD = float(os.getenv("M2_FLIP_SECONDS", "1.2"))
@@ -1359,7 +1430,7 @@ def video(subtitles=True):
                 plan.append((t, min(b, t + HOLD), seq[k % len(seq)], bi)); t += HOLD; k += 1
         else:                                                    # VOICE-SYNCED: a picture appears when its words are spoken
             MIN = float(os.getenv("M2_MIN_SECONDS", "3.5"))
-            slots = synced_slots(ws[bi] if ws else None, a, b, len(mine), MIN) if ws else None
+            slots = synced_slots(ws[bi] if ws else None, a, b, len(mine), MIN, float(os.getenv("M2_MAX_PAGE_SECONDS", "7.2")) + 0.8) if ws else None
             if not slots:
                 fit = max(1, min(len(mine), int((b - a) // MIN))); slots = [(a + (b - a) * j / fit, a + (b - a) * (j + 1) / fit) for j in range(fit)]
             use = [mine[round(k * (len(mine) - 1) / max(1, len(slots) - 1))] for k in range(len(slots))] if len(slots) < len(mine) else mine
@@ -1415,14 +1486,14 @@ def video(subtitles=True):
     LEAD = [0.0] + [(xf_of(i) if clip_for(P, plan[i + 1][2]) else 0.0) for i in range(len(plan) - 1)]   # the incoming clip already PLAYS during the melt
     def clip_speed(n_, span, ends):
         if not n_ or span <= 0: return 1.0
-        return min(1.0, max(0.75, (n_ / 30.0) / span))                    # never faster than real speed
+        return min(1.0, max(float(os.getenv("M2_CLIP_MIN_SPEED", "0.62")), (n_ / 30.0) / span))   # never faster than real speed; down to 0.62x so a clip covers a page up to 8 s
     def frame_for(f, t, a, b=None, ends=False, lead=0.0):
         c = clip_for(P, f)
         if c:
             fr_ = (clipper if c == clipper.path or clipper.path is None or c != clipper2.path else clipper2)
             fr_.get(c, 0); n_ = len(fr_.frames)
             speed = clip_speed(n_, (b - a) + lead, ends) if b else 1.0          # longer page -> a little slower; chain -> reach the last frame at the join
-            img_ = fr_.get(c, int(((t - a) + lead) * 30 * speed))
+            img_ = fr_.get_f(c, ((t - a) + lead) * 30 * speed)
             if img_ is not None: return clip_camera(img_, t)
         return cam(f, t)
     def clip_camera(img_, t):
@@ -1453,7 +1524,7 @@ def video(subtitles=True):
                     clipper2.get(nc, 0); a2, b2 = plan[pi + 1][0], plan[pi + 1][1]
                     nf2 = plan[pi + 2][2] if pi + 2 < len(plan) else None
                     sp2 = clip_speed(len(clipper2.frames), (b2 - a2) + XF, seamless(nf, nf2))
-                    nxt = clipper2.get(nc, int((t - (b - XF)) * 30 * sp2))
+                    nxt = clipper2.get_f(nc, (t - (b - XF)) * 30 * sp2)
                 if nxt is not None: nxt = clip_camera(nxt, t)            # the incoming clip gets the same camera -> no jump when the melt ends
                 img = img * (1 - w) + (nxt if nxt is not None else cam(nf, t)) * w
         if os.getenv("M2_ATMOSPHERE", "1") != "0" and bi >= 0:   # living details of this part's place
@@ -1562,9 +1633,14 @@ def burn_subs(P, st, bt, video_path, TI=0.0, story_len=None, TO=0.0):
          "Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV",
          f"Style: Sub,{font},36,&H00FFFFFF,&H00000000,&H96000000,1,3,2,0,2,90,90,34",
          f"Style: Title,{font},78,&H0000E1FF,&H00000000,&H64000000,1,1,6,3,5,80,80,0",
-         f"Style: Moral,{font},50,&H00FFFFFF,&H00000000,&HA0000000,1,3,4,0,5,110,110,0", "", "[Events]",
+         f"Style: Moral,{font},50,&H00FFFFFF,&H00000000,&HA0000000,1,3,4,0,5,110,110,0",
+         f"Style: Hook,{font},50,&H0000E1FF,&H00000000,&HB4000000,1,3,4,0,2,90,90,70", "", "[Events]",
          "Format: Layer, Start, End, Style, MarginL, MarginR, MarginV, Text"]
-    if TI: L.append(f"Dialogue: 0,{ts(0.3)},{ts(TI - 0.2)},Title,0,0,0,{{\\fad(500,400)}}{st.get('title', '')}")
+    hk = st.get("hook", "") if os.getenv("M2_HOOK", "1") == "1" else ""
+    if TI and hk and TI > 5.5:
+        L.append(f"Dialogue: 0,{ts(0.4)},{ts(TI - 3.0)},Hook,0,0,0,{{\\fad(400,300)}}{hk}")
+        L.append(f"Dialogue: 0,{ts(TI - 2.8)},{ts(TI - 0.2)},Title,0,0,0,{{\\fad(400,400)}}{st.get('title', '')}")
+    elif TI: L.append(f"Dialogue: 0,{ts(0.3)},{ts(TI - 0.2)},Title,0,0,0,{{\\fad(500,400)}}{st.get('title', '')}")
     for bi, b in enumerate(st["beats"]):
         sents = [x for x in re.split(r"(?<=[।!?])\s+", b["narration"].strip()) if x]
         span = bt[bi + 1] - bt[bi]; tot = sum(len(x) for x in sents) or 1; t = bt[bi]

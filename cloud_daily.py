@@ -257,8 +257,24 @@ def kaggle_clips(P, st, pages):
                                   "characters with exactly the same faces, clothes and colours.")), "story text (picture drawn on Kaggle)"
         say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
     if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI ({ {'kontext': 'FLUX Kontext + cast sheet', 'kontext_scene': 'schnell scene + Kontext character edit'}.get(IMAGE_MODEL, 'FLUX schnell') })")
-    names = sorted(prompts); jobs = []
+    all_names = sorted(prompts); jobs = []
     led = ledger(); room = {a["name"]: room_today(a, led) for a in accs}
+    total_room = sum(room.values())
+    if len(all_names) > total_room:                                   # not enough clip time: the IMPORTANT pages get the clips, the rest a picture only
+        nums = [int(n_[:3]) for n_ in all_names]
+        beat_of = {i: st["pictures"][i - 1].get("beat") for i in nums}
+        first_of = {}
+        for i in nums: first_of.setdefault(beat_of[i], i)
+        hook_pg = first_of.get(st.get("hook_part", 0))
+        prio = [x for x in ([hook_pg, nums[0]] + nums[-3:] + sorted(first_of.values())) if x]       # hook, first page, the reveal + ending, one per part
+        chosen = list(dict.fromkeys(prio))[:max(0, total_room)]
+        rest = [i for i in nums if i not in chosen]; need = max(0, total_room - len(chosen))
+        if need and rest: chosen += list(dict.fromkeys(rest[int(k * len(rest) / need)] for k in range(need)))
+        names = [f"{i:03d}.png" for i in sorted(chosen)]
+        say(f"   clip time for {total_room} of {len(all_names)} pages -> moving clips on the important pages (hook, first, reveal, ending, one per part) and an own picture on every other page")
+    else:
+        names = list(all_names)
+    pic_only = [n_ for n_ in all_names if n_ not in names]
     for n, a in enumerate(accs):
         say(f"   account {n + 1}: {led['used_min'].get(a['user'], 0) / 60:.1f} h used this Kaggle week -> room for {room[a['name']]} clips today")
     share = {a["name"]: [] for a in accs}; draw_only = {a["name"]: [] for a in accs}
@@ -286,13 +302,13 @@ def kaggle_clips(P, st, pages):
         if not open_: break
         a = max(open_, key=lambda x: week_left[x["name"]] - len(share[x["name"]]) * PAGE_MIN); n_ = pending.pop(0)
         share[a["name"]].append(n_); chains[a["name"]].append([n_])
-    if pending:
-        say(f"   no Kaggle time left for {len(pending)} pages -> they stay living pictures (their pictures are still drawn where time allows)")
-        spare = {a["name"]: max(0.0, (room[a["name"]] - len(share[a["name"]])) * PAGE_MIN + PAGE_MIN * 0.9) for a in accs}
-        for n_ in [x for x in pending if x in DRAW]:
-            a = max(accs, key=lambda x: spare[x["name"]])
-            if spare[a["name"]] < IMG_MIN: break
-            draw_only[a["name"]].append(n_); spare[a["name"]] -= IMG_MIN
+    pic_only += pending                                               # clip pages that did not fit anywhere also keep at least their own picture
+    if pic_only:
+        usable = [a for a in accs if a["user"] not in led.get("full", [])] or accs
+        load = {a["name"]: len(share[a["name"]]) * PAGE_MIN for a in usable}
+        for n_ in pic_only:                                           # a picture costs only ~0.6-6 min: always drawn, on the account with the lightest load
+            a = min(usable, key=lambda x: load[x["name"]]); draw_only[a["name"]].append(n_); load[a["name"]] += IMG_MIN
+        say(f"   {len(pic_only)} pages get a picture only (no clip time): {', '.join(x[:3] for x in pic_only[:30])}")
     for n, acc in enumerate(accs):
         mine, extra = share[acc["name"]], draw_only[acc["name"]]
         if not mine and not extra: continue
@@ -442,8 +458,10 @@ def main():
     accs_ = kaggle_accounts()
     if accs_ and k == 0 and os.getenv("M2_FIT_TO_KAGGLE", "1") == "1":   # every page MUST become a clip -> the story only as long as Kaggle can animate today
         led_ = ledger(); can = sum(room_today(a, led_) for a in accs_)
-        sec_pic = float(os.getenv("M2_SECONDS_PER_PICTURE", "6")); fit = round(can * sec_pic / 60 * 0.9, 1)
+        sec_pic = float(os.getenv("M2_SECONDS_PER_PICTURE", "6")); fit = round(can * sec_pic / 60 * 0.86, 1)
         say(f"   Kaggle can animate {can} pages today -> up to {fit} min with a moving clip on EVERY page")
+        cap_ = min(fit, round(minutes * 1.2, 1))                          # the VOICE may not be longer than this (the story is shortened if it is)
+        os.environ["M2_MAX_MINUTES"] = str(cap_) if cap_ >= 1.5 else "0"
         if fit < minutes:
             if fit < 1.0: say("STOP: not enough Kaggle time left this week for a full-clip video - the week resets on Saturday"); sys.exit(1)
             say(f"   video shortened from {minutes} to {fit} min so no page is left without a clip"); minutes = fit
