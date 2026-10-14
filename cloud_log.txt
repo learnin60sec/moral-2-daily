@@ -703,3 +703,7 @@
 [05:52:35 +332.3 min] STEP 6 YouTube upload
 [05:53:10 +332.9 min]    https://youtu.be/7hL1ebsxQAc (schedule)
 [05:53:10 +332.9 min] === DONE in 333 min ===
+[09:29:33 +  0.0 min] === CLOUD DAILY: 1-min video, AI clips: ALL pictures ===
+[09:29:33 +  0.0 min]     style: 2d_mystery | picture model: schnell | film look: none | upload: no | Gemini keys: 2
+[09:29:33 +  0.0 min]    Kaggle can animate 60 pages today -> up to 5.2 min with a moving clip on EVERY page
+[09:29:33 +  0.0 min] STEP 1 story + voice
