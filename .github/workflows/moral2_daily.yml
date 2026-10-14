@@ -95,13 +95,13 @@ jobs:
           M2_1080: "1"                   # 1080p output, sharp logo
           M2_SMOOTH: "1"                 # RIFE: clips 16 -> 32 fps
           M2_UPSCALE: "1"                # cartoon upscaler: sharper clips
-          M2_SECONDS_PER_PICTURE: "6"     # one page (picture + clip) every 6 s
+          M2_SECONDS_PER_PICTURE: "5.5"   # one page (picture + clip) every 5.5 s: a 5-s clip then plays at nearly normal speed
           M2_KAGGLE_MINUTES: "300"        # GitHub waits this long for Kaggle
           M2_CLIPS: "all"                # every picture becomes a Wan 2.2 14B clip
           STUDIO_UPLOAD: schedule
           STUDIO_TIMES: "18:00"
         run: python cloud_daily.py
-      - name: Keep the video for download (7 days)
+      - name: Keep the video for download (1 day)
         if: always() && steps.guard.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
@@ -109,7 +109,7 @@ jobs:
           path: |
             FINAL_TODAY.mp4
             cloud_log.txt
-          retention-days: 7
+          retention-days: 1        # a public repo's artifacts can be downloaded by any GitHub user -> keep the unreleased video only 1 day
       - name: Remember used stories
         if: always() && steps.guard.outputs.skip != 'true'
         run: |
