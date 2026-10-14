@@ -93,7 +93,7 @@ def ai_prompt(pic, moment):
     """the AI LOOKS at the picture and writes the Wan 2.2 prompt: Groq vision first, Gemini vision second, story text last"""
     STYLE = (" Cinematic realistic film footage, natural lifelike motion, soft dramatic light, the same people with exactly the same faces and clothes."
              if m2.REALISTIC else " Premium 2D cartoon style, the same characters with exactly the same faces, clothes and colours.")
-    fallback = (moment.rstrip(". ") + ". " if moment else "") + ("The characters make small natural movements, gentle wind moves the grass, "
+    fallback = (moment.rstrip(". ") + ". " if moment else "") + ("The characters move clearly - they turn, gesture or take a step - and the surroundings move too (mist, leaves, water, a flame). "
                 "static camera, nothing enters the frame from the edges, nothing covers any face." + STYLE)
     from PIL import Image
     im = Image.open(pic).convert("RGB"); im.thumbnail((768, 768)); b = io.BytesIO(); im.save(b, "JPEG", quality=85)
@@ -184,7 +184,7 @@ def room_today(acc, d):
     """clips this account can still make today: what is left of the week, and what fits in one run"""
     if acc["label"] in d.get("full", []): return 0
     left = WEEK_BUDGET - d["used_min"].get(acc["label"], 0.0) - SETUP_MIN
-    per_run = float(os.getenv("M2_KAGGLE_MINUTES", "300")) - SETUP_MIN - 40          # 40 min for Kaggle's queue and slow moments
+    per_run = float(os.getenv("M2_KAGGLE_MINUTES", "300")) - SETUP_MIN - 40 - float(os.getenv("M2_RETRY_SLACK_MIN", "40"))   # 40 min for Kaggle's queue, 40 min to make bad clips again
     return max(0, int(min(left, per_run) // PAGE_MIN))
 
 
@@ -216,6 +216,7 @@ def start_job(acc, P, names, prompts, tag, draw_only=()):
     negative = ("cartoon, anime, 2D, illustration, painting, CGI, plastic skin, waxy face, deformed hands, extra fingers, new people appearing, "
                 "objects turning into something else, morphing, distorted face, changing clothes, fast camera shake, text, watermark, flicker, blurry") if m2.REALISTIC else ""
     json.dump({"job_id": job_id, "image_model": IMAGE_MODEL, "cast_prompt": CAST_PROMPT.get("text", ""), "pictures": names, "prompts": {n: prompts[n] for n in names}, "make_pictures": draw, "seconds": 5, "size": size, "negative": negative, "smooth": SMOOTH, "upscale": UPSCALE,
+               "budget_min": float(os.getenv("M2_KAGGLE_MINUTES", "300")) - 15, "max_retry": int(os.getenv("M2_CLIP_RETRIES", "2")),
                "chains": [u for u in CHAINS_FOR.get(tag, []) if all(x in names for x in u)]},
               open(os.path.join(jd, "job.json"), "w"))
     json.dump({"title": ds_slug, "id": ds_id, "licenses": [{"name": "CC0-1.0"}]}, open(os.path.join(jd, "dataset-metadata.json"), "w"))
@@ -244,6 +245,26 @@ DRAW = {}
 CAST_PROMPT = {}
 
 
+def story_clip_prompt(pc):
+    """the Wan clip prompt for a picture that does not exist yet: what is seen (the same text FLUX draws from) + the AI's clip script of what moves,
+    in English letters only; if there is no script, a clear generic movement sentence"""
+    clean = lambda t: re.sub(r"\s+", " ", re.sub(r"[\u0900-\u097F]+", "", str(t or ""))).strip().rstrip(". ")
+    action, motion, script = clean(pc.get("action")), clean(pc.get("motion")), str(pc.get("script") or "").strip()
+    if len(script.split()) >= 60:                                    # the full clip script (about 270 words) already describes the picture and its movement
+        sc = re.sub(r"\s+", " ", re.sub(r"[\u0900-\u097F]+", "", script)).strip()
+        tail = ("Static camera, smooth continuous motion without cuts. Nothing enters the frame from the edges. Same faces, clothes and colours throughout. "
+                + ("Cinematic realistic film footage." if m2.REALISTIC else "Premium 2D cartoon style."))
+        return sc + " " + tail
+    core = f"{action}. {motion}. " if motion else (f"{action}. " if action else "") + "The characters move clearly - they turn, gesture or take a step - and the surroundings move too (mist, leaves, water, a flame). "
+    if m2.REALISTIC:
+        tail = ("Slow cinematic camera push-in, smooth natural motion without cuts, nothing enters the frame from the edges, nothing covers any face. "
+                "Cinematic realistic film footage, natural lifelike motion, the same people with exactly the same faces and clothes.")
+    else:
+        tail = ("Static camera, smooth natural motion without cuts, nothing enters the frame from the edges, nothing covers any face. "
+                "Premium 2D cartoon style, the same characters with exactly the same faces, clothes and colours.")
+    return core + tail
+
+
 def cast_prompt(st):
     """one picture with every main character side by side - the reference FLUX Kontext keeps on every page"""
     looks = st.get("characters", {})
@@ -260,16 +281,13 @@ def kaggle_clips(P, st, pages):
     prompts = {}; looks = st.get("characters", {})
     os.makedirs(P.p(m2.pics_dir(P)), exist_ok=True); os.makedirs(P.p("clips"), exist_ok=True)
     for i in pages:
-        name = f"{i:03d}.png"; moment = st["pictures"][i - 1].get("action", "")
+        name = f"{i:03d}.png"; pc_ = st["pictures"][i - 1]; moment = pc_.get("action", "")
+        if pc_.get("motion"): moment = moment.rstrip(". ") + ". Visible movement: " + pc_["motion"].rstrip(". ")      # what really MOVES, written by the story AI
         if os.path.exists(P.p(m2.pics_dir(P), name)):
             prompts[name], who = ai_prompt(P.p(m2.pics_dir(P), name), moment)
         else:                                                         # no picture yet: Kaggle draws it first (FLUX), prompt from the story
             DRAW[name] = m2.full_prompt(st["pictures"][i - 1], looks) + " Always the same character design and the same clothes in every picture."
-            prompts[name], who = (moment.rstrip(". ") + ". " if moment else "") + ("The characters make small natural movements, gentle wind moves the grass, " +
-                                  ("slow cinematic camera push-in, nothing enters the frame from the edges, nothing covers any face. Cinematic realistic film footage, natural "
-                                  "lifelike motion, the same people with exactly the same faces and clothes." if m2.REALISTIC else
-                                  "static camera, nothing enters the frame from the edges, nothing covers any face. Premium 2D cartoon style, the same "
-                                  "characters with exactly the same faces, clothes and colours.")), "story text (picture drawn on Kaggle)"
+            prompts[name], who = story_clip_prompt(pc_), "story script (picture drawn on Kaggle)"
         say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
     if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI ({ {'kontext': 'FLUX Kontext + cast sheet', 'kontext_scene': 'schnell scene + Kontext character edit'}.get(IMAGE_MODEL, 'FLUX schnell') })")
     all_names = sorted(prompts); jobs = []
@@ -368,6 +386,7 @@ def kaggle_clips(P, st, pages):
             say(f"   account {n_acc} report: pictures {len(r_.get('pictures_made', []))}/{len(r_.get('pictures_asked', []))}, "
                 f"clips {len(r_.get('clips_made', []))}/{len(r_.get('clips_asked', []))}, {r_.get('minutes')} min on Kaggle, "
                 f"smooth 32 fps: {'yes' if r_.get('smooth_rife') else 'no'}, sharper clips: {r_.get('upscaled', 0)}")
+            if r_.get("regenerated") or r_.get("doubtful"): say(f"   account {n_acc}: clips made again (page: tries) {r_.get('regenerated') or '-'} | still doubtful after the tries {r_.get('doubtful') or '-'}")
             if len(r_.get("clips_made", [])) < len(r_.get("clips_asked", [])):
                 for line in r_.get("comfy_log_tail", [])[-12:]: say(f"      ComfyUI: {line[:160]}")
         else:
@@ -390,13 +409,11 @@ def kaggle_clips(P, st, pages):
             if re.fullmatch(r"\d{3}\.png", name) and not os.path.exists(dst): S.clean_frame(open(f, "rb").read(), dst); say(f"   picture {name} drawn on Kaggle")
     say(f"   {got} AI clips received (of {len(pages)})"); return got
 
-# ---------------------------------------------------------------- 4b) CLIP DOCTOR
-def _clip_frames(path, n=9, w=160, h=90):
+# ---------------------------------------------------------------- 4b) CLIP DOCTOR (v2: trims instead of throwing away)
+def _gray_frames(path, fps=8):
     import numpy as np
-    raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-i", path, "-vf", f"scale={w}:{h},format=gray", "-f", "rawvideo", "-"], capture_output=True).stdout
-    if not raw: return None
-    a = np.frombuffer(raw, np.uint8).reshape(-1, h, w).astype("float64")
-    return a[np.linspace(0, len(a) - 1, n).astype(int)]
+    raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-i", path, "-vf", f"fps={fps},scale=160:90,format=gray", "-f", "rawvideo", "-"], capture_output=True).stdout
+    return np.frombuffer(raw, np.uint8).reshape(-1, 90, 160).astype("float64") if raw else None
 
 
 def _worst_similarity(a, b, k=10):
@@ -409,18 +426,30 @@ def _worst_similarity(a, b, k=10):
     return float(np.percentile(vals, 10))
 
 
+def _clip_stats(path):
+    """usual change per step, the biggest one-step jump (and when), and how different the clip becomes from its first frame.
+    Measured on real clips: good 14B clips have a biggest step of 2-4 (ratio to the usual step 1.7-2.4); a real scene cut (LTX) has 38 (ratio 9.9)."""
+    import numpy as np
+    fr = _gray_frames(path)
+    if fr is None or len(fr) < 6: return None
+    cons = np.array([np.abs(fr[i + 1] - fr[i]).mean() for i in range(len(fr) - 1)])
+    med = float(np.median(cons)); mx = float(cons.max())
+    return {"seconds": len(fr) / 8.0, "med": med, "max": mx, "ratio": mx / max(med, 1.0), "cut_at": (int(cons.argmax()) + 1) / 8.0,
+            "sim": min(_worst_similarity(fr[0], f) for f in fr[1::3])}
+
+
 def _ai_clip_ok(path):
-    """AI eyes: first and last frame - did anything turn into something else, a new character appear, or a face melt?"""
+    """AI eyes on the first, middle and last frame: did a person/animal turn into something else, did a new character appear, did a face melt, did the place change?"""
     key_g, key_m = os.getenv("GROQ_API_KEY"), os.getenv("GEMINI_API_KEY")
-    if not (key_g or key_m): return True, "no AI check"
+    if not (key_g or key_m): return None, "no AI check"
     imgs = []
-    for t in ("0.1", "4.7"):
+    for t in ("0.1", "2.5", "4.7"):
         raw = subprocess.run([S.ffmpeg(), "-v", "quiet", "-ss", t, "-i", path, "-frames:v", "1", "-vf", "scale=512:-2", "-f", "image2", "-c:v", "mjpeg", "-"], capture_output=True).stdout
         if raw: imgs.append(base64.b64encode(raw).decode())
-    if len(imgs) < 2: return True, "frames not read"
-    ask = ("Picture 1 is the first frame and picture 2 the last frame of a 5-second cartoon clip. Answer NO only if something clearly went "
-           "wrong: a person or animal turned into something else, a new person or creature appeared, a face or body melted or became "
-           "distorted, or the scene changed to a different place. Small natural movements are fine. "
+    if len(imgs) < 2: return None, "frames not read"
+    ask = ("These are the first, the middle and the last frame of a 5-second cartoon clip. Answer ok=false ONLY if something clearly went wrong: a person "
+           "or animal turned into something else, a new person or creature appeared out of nowhere, a face or body melted or became badly distorted, or the "
+           "scene changed to a different place. People walking, turning, gesturing or the camera moving a little are FINE. "
            'JSON only: {"ok": true or false, "problem": "short reason"}')
     try:
         if key_g:
@@ -429,38 +458,52 @@ def _ai_clip_ok(path):
                                     "messages": [{"role": "user", "content": [{"type": "text", "text": ask}] + [
                                         {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b}} for b in imgs]}]})
             if r.status_code == 200:
-                j = S.parse(r.json()["choices"][0]["message"]["content"]); return bool(j.get("ok", True)), str(j.get("problem", ""))[:100]
+                j = S.parse_any(r.json()["choices"][0]["message"]["content"]) or {}; return bool(j.get("ok", True)), str(j.get("problem", ""))[:100]
         if key_m:
             r = requests.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", headers={"x-goog-api-key": key_m}, timeout=60,
                               json={"contents": [{"parts": [{"text": ask}] + [{"inline_data": {"mime_type": "image/jpeg", "data": b}} for b in imgs]}],
                                     "generationConfig": {"responseMimeType": "application/json"}})
             if r.status_code == 200:
-                j = S.parse(r.json()["candidates"][0]["content"]["parts"][0]["text"]); return bool(j.get("ok", True)), str(j.get("problem", ""))[:100]
+                j = S.parse_any(r.json()["candidates"][0]["content"]["parts"][0]["text"]) or {}; return bool(j.get("ok", True)), str(j.get("problem", ""))[:100]
     except Exception:
         pass
-    return True, "AI check not answered"
+    return None, "AI check not answered"
+
+
+def _trim_clip(path, seconds):
+    tmp = path[:-4] + "_t.mp4"
+    r = subprocess.run([S.ffmpeg(), "-y", "-v", "quiet", "-i", path, "-t", f"{seconds:.2f}", "-an", "-c:v", "libx264", "-crf", "15", "-pix_fmt", "yuv420p", tmp])
+    if r.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 20000: os.replace(tmp, path); return True
+    if os.path.exists(tmp): os.remove(tmp)
+    return False
 
 
 def clip_doctor(P):
-    """every AI clip is checked; a bad one is moved to clips_rejected/ and its page uses the living picture instead"""
+    """EVERY clip stays a video. The doctor only writes every clip's numbers into the log and, for a hard scene cut inside a clip, keeps the good part
+    before the cut (if at least M2_DOC_MIN_KEEP seconds remain, else the whole clip stays). Broken, frozen or doubtful clips were already made again on Kaggle."""
     clips = sorted(glob.glob(P.p("clips", "*.mp4")))
     if not clips: return
-    os.makedirs(P.p("clips_rejected"), exist_ok=True); bad = 0
-    for c in clips:
-        fr = _clip_frames(c); why = None
-        if fr is None or len(fr) < 3: why = "unreadable"
-        else:
-            import numpy as np
-            sim = min(_worst_similarity(fr[0], f) for f in fr[1:]); jump = max(float(np.abs(fr[i + 1] - fr[i]).mean()) for i in range(len(fr) - 1))
-            if sim < float(os.getenv("M2_CLIP_MIN_SIMILARITY", "0.05")) or jump > float(os.getenv("M2_CLIP_MAX_JUMP", "25")):
-                why = f"melting / scene jump (similarity {sim:.2f}, jump {jump:.0f})"
-        if not why:
-            ok, prob = _ai_clip_ok(c)
-            if not ok: why = f"AI: {prob}"
-        if why:
-            shutil.move(c, P.p("clips_rejected", os.path.basename(c))); bad += 1
-            say(f"   CLIP DOCTOR: {os.path.basename(c)} REJECTED - {why} -> this page uses the living picture")
-    say(f"   CLIP DOCTOR: {len(clips) - bad} of {len(clips)} clips passed")
+    cut_ratio = float(os.getenv("M2_DOC_CUT_RATIO", "5")); cut_min = float(os.getenv("M2_DOC_CUT_MIN", "14")); min_keep = float(os.getenv("M2_DOC_MIN_KEEP", "1.2"))
+    chf = P.p("clips", "chained.json")
+    try: chained = set(json.load(open(chf)))
+    except Exception: chained = set()
+    kept = trimmed = 0; changed = []
+    for cpath in clips:
+        name = os.path.basename(cpath); num = int(name[:3]); s = _clip_stats(cpath)
+        if s is None: say(f"   CLIP DOCTOR: {name} could not be read - left as it is"); kept += 1; continue
+        nums = f"usual step {s['med']:.1f}, biggest step {s['max']:.1f} at {s['cut_at']:.1f} s (x{s['ratio']:.1f}), similarity {s['sim']:.2f}"
+        note = ""
+        if s["max"] >= cut_min and s["ratio"] >= cut_ratio:
+            keep_s = s["cut_at"] - 0.15
+            if keep_s >= min_keep and _trim_clip(cpath, keep_s): trimmed += 1; changed.append(num); note = f"TRIMMED - scene cut at {s['cut_at']:.1f} s, the first {keep_s:.1f} s are used"
+            else: kept += 1; note = f"KEPT - scene cut at {s['cut_at']:.1f} s but less than {min_keep:g} s before it, the whole clip stays"
+        elif s["med"] < 0.35: kept += 1; note = "KEPT - very little movement"
+        elif s["ratio"] >= 3.5 or s["sim"] < 0.15: kept += 1; note = "KEPT - strong movement"
+        else: kept += 1; note = "OK"
+        say(f"   CLIP DOCTOR: {name} {note}   [{nums}]")
+    for num in changed: chained.discard(f"{num + 1:03d}.png")          # the next clip started from a frame this clip no longer ends with
+    json.dump(sorted(chained), open(chf, "w"))
+    say(f"   CLIP DOCTOR: {len(clips)} clips, all kept as videos ({trimmed} trimmed at a scene cut)")
 
 
 # ---------------------------------------------------------------- the day

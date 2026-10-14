@@ -38,6 +38,67 @@ def latest():
 
 
 # ------------------------------------------------------------------ 1) story + one prompt file + one voice
+def _scripts_of(d):
+    """the list of clip scripts (strings) inside whatever JSON the AI returned"""
+    if isinstance(d, list): d = {"items": d}
+    if not isinstance(d, dict): return []
+    cands = [d.get("scripts")] + [v for v in d.values() if isinstance(v, list)]
+    for v in cands:
+        if isinstance(v, list) and v:
+            out = [x if isinstance(x, str) else next((str(y) for y in x.values() if isinstance(y, str) and len(y) > 80), "") for x in v if isinstance(x, (str, dict))]
+            out = [o.strip() for o in out if o and len(o.strip()) > 80]
+            if out: return out
+    return []
+
+
+def trim_words(text, limit):
+    """cut at `limit` words, going back to the end of a sentence if that costs less than 30 words"""
+    w = str(text).split()
+    if len(w) <= limit: return " ".join(w)
+    cut = " ".join(w[:limit]); i = max(cut.rfind(". "), cut.rfind("; "))
+    return cut[:i + 1] if i > len(cut) - 30 * 6 and i > 0 else cut
+
+
+def detail_scripts(beats, looks, pics, english):
+    """ONE writer call per story part: every picture gets a very detailed English clip script (Wan reads at most 512 tokens = about 330 words, so the
+    script gets M2_SCRIPT_WORDS = 270 and the rest is kept for the consistency line, the 'continue' sentence and the retry wording)"""
+    from concurrent.futures import ThreadPoolExecutor
+    maxw = int(os.getenv("M2_SCRIPT_WORDS", "270"))
+    by_beat = {}
+    for i, pc in enumerate(pics): by_beat.setdefault(pc["beat"], []).append(i)
+    cast = "\n".join(f"- {n}: {l}" for n, l in looks.items())
+    def one(bi, idxs):
+        lines = "\n".join(f"{k + 1}. what is seen: {pics[i]['action']} | idea of the movement: {pics[i].get('motion', '')} | characters: {', '.join(pics[i]['characters'])}" for k, i in enumerate(idxs))
+        prompt = f"""You write prompts for the Wan 2.2 image-to-video model. It turns ONE 2D cartoon picture into a 5-second clip, so the prompt must describe the picture and its movement in COMPLETE DETAIL.
+Place of this story part: {beats[bi].get('place', '')}. It has {len(idxs)} pictures, in this order.
+Narration of this part (Hindi - understand it, do not copy it): {str(beats[bi]['narration'])[:700]}
+Characters (use ONLY these English names, never Hindi letters):
+{cast}
+Pictures:
+{lines}
+For EACH picture write ONE English paragraph of {maxw - 40} to {maxw} words (NEVER more than {maxw}) containing, in this order:
+(1) the shot: wide or medium, time of day, light direction and colours, 2D cartoon style;
+(2) every character in the frame: name, exact look from the list, position (left / centre / right, foreground / background), posture, facial expression;
+(3) the setting in detail: the objects, buildings, plants, sky and light sources that are in the picture;
+(4) the 5 seconds second by second ("0-1 s: ..., 1-2 s: ..., 2-3 s: ..., 3-4 s: ..., 4-5 s: ..."): clear actions, gestures, head and eye movements, expression changes, how every other character reacts;
+(5) movement of the surroundings: flame flicker, mist, smoke, leaves, water, dust, cloth in the wind;
+(6) camera locked static (or a very slow push-in), no cut, no new people, faces, clothes and colours never change, the last second ends in a calm pose.
+Describe ONLY what is in that picture. English letters only.
+JSON only: {{"scripts": ["paragraph for picture 1", "paragraph for picture 2"]}} with EXACTLY {len(idxs)} paragraphs."""
+        try: d = S.ask_writer(prompt, temperature=0.6, check=lambda x: len(_scripts_of(x)) >= len(idxs))
+        except SystemExit: d = None
+        return bi, idxs, _scripts_of(d)[:len(idxs)]
+    say(f"  writing the detailed clip scripts: {len(by_beat)} parts, up to {maxw} words per picture ...")
+    done = 0
+    with ThreadPoolExecutor(max_workers=int(os.getenv("M2_SCRIPT_THREADS", "3"))) as ex:
+        for bi, idxs, outs in ex.map(lambda kv: one(*kv), list(by_beat.items())):
+            for i, sc in zip(idxs, outs):
+                sc = trim_words(english(sc), maxw)
+                if len(sc.split()) >= 60: pics[i]["script"] = sc; done += 1
+    words = [len(pc.get("script", "").split()) for pc in pics if pc.get("script")]
+    say(f"  clip scripts: {done} of {len(pics)} pictures" + (f", {min(words)}-{max(words)} words each" if words else "") + ("" if done == len(pics) else " (the others keep the short movement text)"))
+
+
 def story(minutes=4.0):
     """story first -> voice -> REAL length of every part -> pictures per part = its seconds / M2_SECONDS_PER_PICTURE -> prompts"""
     base = os.path.join(HERE, "projects", time.strftime("%Y%m%d_%H%M%S")); folder, k = base, 1
@@ -57,7 +118,7 @@ Write it to be READ ALOUD in one smooth take: flowing sentences, natural Hindi, 
 JSON only: {{"title": "...", "moral": "one short Hindi sentence", "moral_tone": "happy|sad|serious",
 "hook": "Hindi, 1-2 short spoken sentences (max 22 words) for the first seconds of the video: the strangest or most exciting moment as a gripping question that makes people stay. NEVER reveal the answer or the ending.",
 "hook_part": "number of the part (0 = first) where that moment happens - never one of the last two parts",
-"characters": [{{"name": "...", "look": "ONE fixed {'realistic appearance' if REALISTIC else '2D cartoon design'} in English: age, body, face, hair, skin tone, exact clothes with colours"}}],
+"characters": [{{"name": "the character's name in ENGLISH LETTERS only, e.g. Aarav, Malti Nani, Jaggu - never Hindi script", "look": "ONE fixed {'realistic appearance' if REALISTIC else '2D cartoon design'} in English: age, body, face, hair, skin tone, exact clothes with colours"}}],
 "beats": [{{"narration": "Hindi text of this part", "place": "English: place + time of day + light{' (mysterious mood)' if MYSTERY else ''}"}}]}}""", check=lambda x: len(S.beats_from(x)) >= 3)
     d = d if isinstance(d, dict) else {}
     beats = S.beats_from(d)
@@ -94,6 +155,14 @@ STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_ton
         t = re.sub(r"\s*(\.{2,}|…)\s*", ", ", str(b["narration"]))          # '...' makes the voice stop -> comma
         b["narration"] = re.sub(r"\s+", " ", t).replace(", ,", ",").strip()
     looks = {c["name"]: c.get("look", "") for c in d.get("characters", []) if isinstance(c, dict) and c.get("name")}
+    _dev = re.compile(r"[\u0900-\u097F]+")
+    rename = {n: f"Character {chr(65 + i)}" for i, n in enumerate(list(looks)) if _dev.search(n)}
+    if rename: say(f"  character names were in Hindi script -> {rename} (picture and video prompts must stay in English letters)")
+    looks = {rename.get(n, n): re.sub(r"\s+", " ", _dev.sub("", v)).strip() for n, v in looks.items()}
+    def english(txt):                                              # no Hindi letters in any prompt: known names are swapped, the rest removed
+        txt = str(txt or "")
+        for hn, en in rename.items(): txt = txt.replace(hn, en)
+        return re.sub(r"\s+", " ", _dev.sub("", txt)).strip()
     title = d.get("title", idea["title"])
     hook = re.sub(r"\s+", " ", str(d.get("hook") or "")).replace("...", ",").replace("…", ",").strip()
     if not hook:                                                    # no hook from the AI -> the first sentence of the story as a question
@@ -134,7 +203,7 @@ STORY: {json.dumps({"moral": d.get("moral"), "beats": [{"narration": b["narratio
         except SystemExit:
             say("  shortening: no AI answered - this length is kept"); break
     bt = beat_times(P, st, total)
-    SEC_MAXP = float(os.getenv("M2_MAX_PAGE_SECONDS", "7.2"))          # a clip is 5 s (slowed to at most 0.62x = 8 s): a page must never be longer
+    SEC_MAXP = float(os.getenv("M2_MAX_PAGE_SECONDS", "6.4"))          # a clip is 5 s (slowed to at most 0.62x = 8 s): a page must never be longer
     counts = [max(1, int(round((bt[i + 1] - bt[i]) / SEC_PER_PIC)), int(math.ceil((bt[i + 1] - bt[i]) / SEC_MAXP))) for i in range(len(beats))]
     say(f"  video length {total / 60:.1f} min -> {sum(counts)} pictures (one every ~{SEC_PER_PIC:.0f} s, never longer than {SEC_MAXP:g} s), parts get: {counts}")
     plan = "\n".join(f"{i}: [{counts[i]} pictures, {bt[i + 1] - bt[i]:.0f} s] {b['place']} - {b['narration'][:220]}" for i, b in enumerate(beats))
@@ -142,7 +211,14 @@ STORY: {json.dumps({"moral": d.get("moral"), "beats": [{"narration": b["narratio
 the action moving forward a little in each picture, following what the narration says in that order. Give EXACTLY the number of
 pictures written in [ ] for each part. Characters: {', '.join(looks)}.
 {plan}
-JSON only: {{"parts": [{{"index": 0, "pictures": [{{"action": "English: exactly what is seen", "characters": ["name"]}}]}}]}}""")
+For EVERY picture also write "motion": a CLIP SCRIPT of 55-90 English words for the video model, in this order:
+(1) who is in the frame - use ONLY these English names: {', '.join(looks)} - where each one stands and what he or she holds;
+(2) what happens in 3 beats during the 5 seconds ("first ..., then ..., finally ..."): a CLEAR visible action of the main character (steps forward, turns the head,
+points, lifts the lantern, hugs, laughs, cries), the facial expression changing, and the reaction of every other person in the frame;
+(3) movement of the surroundings (mist drifts, a flame flickers, leaves sway, water ripples, smoke rises);
+(4) the last second settles into a calm pose from which the next picture of the same part can continue.
+Describe ONLY things that are in this picture. No camera movement, no new people, no scene change. English letters only.
+JSON only: {{"parts": [{{"index": 0, "pictures": [{{"action": "English: exactly what is seen", "motion": "English: what moves", "characters": ["name"]}}]}}]}}""")
     got = {int(x.get("index", -1)): x.get("pictures", []) for x in (m.get("parts", []) if isinstance(m, dict) else []) if isinstance(x, dict)}
     pics = []
     for bi, b in enumerate(beats):
@@ -150,7 +226,8 @@ JSON only: {{"parts": [{{"index": 0, "pictures": [{{"action": "English: exactly 
         if not lst: lst = [{"action": f"scene of: {b['place']}", "characters": list(looks)[:2]}]
         while len(lst) < counts[bi]: lst.append(dict(lst[-1], action=lst[-1]["action"] + " (a moment later, slightly different pose)"))
         for pc in lst[:counts[bi]]:
-            pics.append({"beat": bi, "action": pc["action"], "place": b.get("place", ""), "characters": [n for n in pc.get("characters", []) if n in looks] or list(looks)[:1]})
+            pics.append({"beat": bi, "action": english(pc["action"]), "motion": english(pc.get("motion")), "place": english(b.get("place", "")), "characters": [n for n in pc.get("characters", []) if n in looks] or list(looks)[:1]})
+    if os.getenv("M2_DETAIL_SCRIPTS", "1") == "1": detail_scripts(beats, looks, pics, english)
     for i, p in enumerate(pics, 1):
         p["prompt"] = full_prompt(p, looks, i)
     st["pictures"] = pics; P.save("story.json", st)
@@ -1327,6 +1404,7 @@ class ClipFrames:
         if path == self.path: return
         self._drop(); self.path = path
         fd, tmp = tempfile.mkstemp(suffix=".raw", prefix="m2clip_"); os.close(fd)
+        import atexit; atexit.register(lambda t=tmp: os.path.exists(t) and os.remove(t))      # never leave the big temp file behind, even if the run stops
         subprocess.run([S.ffmpeg(), "-y", "-v", "quiet", "-i", path, "-vf", "scale=1280:720:flags=lanczos,fps=30", "-f", "rawvideo", "-pix_fmt", "rgb24", tmp])
         n = os.path.getsize(tmp) // (1280 * 720 * 3)
         if n < 1: os.remove(tmp); return
@@ -1430,7 +1508,7 @@ def video(subtitles=True):
                 plan.append((t, min(b, t + HOLD), seq[k % len(seq)], bi)); t += HOLD; k += 1
         else:                                                    # VOICE-SYNCED: a picture appears when its words are spoken
             MIN = float(os.getenv("M2_MIN_SECONDS", "3.5"))
-            slots = synced_slots(ws[bi] if ws else None, a, b, len(mine), MIN, float(os.getenv("M2_MAX_PAGE_SECONDS", "7.2")) + 0.8) if ws else None
+            slots = synced_slots(ws[bi] if ws else None, a, b, len(mine), MIN, float(os.getenv("M2_MAX_PAGE_SECONDS", "6.4")) + 0.8) if ws else None
             if not slots:
                 fit = max(1, min(len(mine), int((b - a) // MIN))); slots = [(a + (b - a) * j / fit, a + (b - a) * (j + 1) / fit) for j in range(fit)]
             use = [mine[round(k * (len(mine) - 1) / max(1, len(slots) - 1))] for k in range(len(slots))] if len(slots) < len(mine) else mine
