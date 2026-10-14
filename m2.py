@@ -58,9 +58,9 @@ JSON only: {{"title": "...", "moral": "one short Hindi sentence", "moral_tone": 
 "hook": "Hindi, 1-2 short spoken sentences (max 22 words) for the first seconds of the video: the strangest or most exciting moment as a gripping question that makes people stay. NEVER reveal the answer or the ending.",
 "hook_part": "number of the part (0 = first) where that moment happens - never one of the last two parts",
 "characters": [{{"name": "...", "look": "ONE fixed {'realistic appearance' if REALISTIC else '2D cartoon design'} in English: age, body, face, hair, skin tone, exact clothes with colours"}}],
-"beats": [{{"narration": "Hindi text of this part", "place": "English: place + time of day + light{' (mysterious mood)' if MYSTERY else ''}"}}]}}""")
+"beats": [{{"narration": "Hindi text of this part", "place": "English: place + time of day + light{' (mysterious mood)' if MYSTERY else ''}"}}]}}""", check=lambda x: len(S.beats_from(x)) >= 3)
     d = d if isinstance(d, dict) else {}
-    beats = [b for b in d.get("beats", []) if isinstance(b, dict) and b.get("narration")]
+    beats = S.beats_from(d)
     if not beats: raise SystemExit("STOPPED: no AI could write the story today (see the lines above) - try again later")
     if beats and os.getenv("M2_STORY_EDITOR", "1") == "1":           # a second pass by an "editor" makes the story clearly better
         say("  story editor: hook, clues, logic, natural Hindi ...")
@@ -78,9 +78,9 @@ Improve this story so families watch till the end. Rules:
 5. Family-friendly: no horror, no gore, no violence shown.
 Return the improved story in EXACTLY the same JSON shape.
 6. Make the "hook" irresistible: max 22 words, a question about the strangest moment, never the answer.
-STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_tone": d.get("moral_tone"), "hook": d.get("hook"), "hook_part": d.get("hook_part"), "characters": d.get("characters"), "beats": beats}, ensure_ascii=False)}""", temperature=0.7)
+STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_tone": d.get("moral_tone"), "hook": d.get("hook"), "hook_part": d.get("hook_part"), "characters": d.get("characters"), "beats": beats}, ensure_ascii=False)}""", temperature=0.7, check=lambda x: len(S.beats_from(x)) >= 1)
             e = e if isinstance(e, dict) else {}                         # no answer at all -> the first version is kept
-            eb = [b for b in e.get("beats", []) if isinstance(b, dict) and b.get("narration")]
+            eb = S.beats_from(e)
             old_len = sum(len(b["narration"]) for b in beats); new_len = sum(len(b["narration"]) for b in eb)
             if len(eb) == len(beats) and 0.75 * old_len <= new_len <= 1.5 * old_len:
                 for ob, nb in zip(beats, eb): nb.setdefault("place", ob.get("place", ""))
@@ -120,9 +120,9 @@ Every part must get about {int(ratio * 100)} percent of its present length. Targ
 Keep EXACTLY {len(beats)} parts, the same title, characters, places and order. Keep the hook, the clues, the cliffhanger at the end of each part,
 the surprising reveal near the end and the moral. Cut repetition, filler and long descriptions; short sentences. No '...', no line breaks. Hindi only.
 Return the shortened story in EXACTLY this JSON shape: {{"moral": "...", "beats": [{{"narration": "..."}}]}}
-STORY: {json.dumps({"moral": d.get("moral"), "beats": [{"narration": b["narration"]} for b in beats]}, ensure_ascii=False)}""", temperature=0.5)
+STORY: {json.dumps({"moral": d.get("moral"), "beats": [{"narration": b["narration"]} for b in beats]}, ensure_ascii=False)}""", temperature=0.5, check=lambda x: len(S.beats_from(x)) >= 1)
             e = e if isinstance(e, dict) else {}
-            eb = [b for b in e.get("beats", []) if isinstance(b, dict) and b.get("narration")]
+            eb = S.beats_from(e)
             new_len = sum(len(b["narration"]) for b in eb)
             if len(eb) == len(beats) and 0.8 * sum(targets) <= new_len <= 1.15 * sum(targets):
                 for ob, nb in zip(beats, eb):

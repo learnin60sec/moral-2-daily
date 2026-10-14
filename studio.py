@@ -48,6 +48,57 @@ def parse(text):
     except json.JSONDecodeError: return None
 
 
+def parse_any(text):
+    """JSON object OR array from a model answer (fences, extra words around it); a top-level array becomes {"items": [...]}"""
+    if not text: return None
+    t = str(text).replace("```json", "").replace("```", "").strip()
+    cands = [t]
+    for pat in (r"\{.*\}", r"\[.*\]"):
+        m = re.search(pat, t, re.S)
+        if m: cands.append(m.group(0))
+    for c in cands:
+        try: d = json.loads(c)
+        except Exception: continue
+        if isinstance(d, list): return {"items": d}
+        if isinstance(d, dict): return d
+    return None
+
+
+def _first_list_of_dicts(d, want_keys=()):
+    """the first list of dicts inside d (under 'ideas'/'beats' or ANY other key); if want_keys is given the dicts must contain one of them"""
+    if isinstance(d, list): d = {"items": d}
+    if not isinstance(d, dict): return []
+    for key in ("ideas", "beats", "items"):
+        v = d.get(key)
+        if isinstance(v, list) and v and all(isinstance(x, dict) for x in v): return v
+    for v in d.values():
+        if isinstance(v, list) and v and all(isinstance(x, dict) for x in v):
+            if not want_keys or any(any(k in x for k in want_keys) for x in v): return v
+        if isinstance(v, dict):
+            r = _first_list_of_dicts(v, want_keys)
+            if r: return r
+    return []
+
+
+def ideas_from(d):
+    """the story ideas in any answer shape; the title may be under title / name / idea / headline ... (else the first short text)"""
+    out = []
+    for i in _first_list_of_dicts(d):
+        title = next((str(i[k]).strip() for k in ("title", "name", "idea", "headline", "story_title", "story", "शीर्षक", "नाम") if isinstance(i.get(k), str) and i.get(k).strip()), "")
+        if not title: title = next((v.strip() for v in i.values() if isinstance(v, str) and 3 <= len(v.strip()) <= 120), "")
+        if title: out.append(dict(i, title=title))
+    return out
+
+
+def beats_from(d):
+    """the story parts in any answer shape: narration may be called narration / text / content / part / story"""
+    out = []
+    for b in _first_list_of_dicts(d, ("narration", "text", "content", "part", "story")):
+        txt = next((str(b[k]).strip() for k in ("narration", "text", "content", "part", "story") if isinstance(b.get(k), str) and b.get(k).strip()), "")
+        if txt: out.append(dict(b, narration=txt, place=b.get("place") or b.get("location") or b.get("setting") or ""))
+    return out
+
+
 def ask(prompt):
     import requests
     gk = os.getenv("GROQ_API_KEY")
@@ -117,7 +168,7 @@ def _gemini_writers(keys):
     _WRITERS.extend(names); return _WRITERS
 
 
-def ask_writer(prompt, temperature=0.9):
+def ask_writer(prompt, temperature=0.9, check=None):
     """stories are written by GEMINI on both keys: Pro -> Flash -> Flash-Lite; 'busy' -> wait and retry, then one more round after 90 s.
     A key whose daily quota is used up (or Pro with no free quota) is skipped for the rest of the run. Every reason is printed.
     Only if Gemini cannot write at all: GPT-OSS-120B / Kimi K2, then the normal ask()."""
@@ -137,10 +188,10 @@ def ask_writer(prompt, temperature=0.9):
             except Exception as e:
                 print(f"  ({tag} did not write: {str(e)[:120]})"); return None
             if r.status_code == 200:
-                try: d = parse(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+                try: d = parse_any(r.json()["candidates"][0]["content"]["parts"][0]["text"])
                 except Exception: d = None
-                if d: print(f"  (written by {tag})"); return d
-                print(f"  ({tag}: answer was not valid JSON)"); return None
+                if d and (check is None or check(d)): print(f"  (written by {tag})"); return d
+                print(f"  ({tag}: " + ("answer was not valid JSON)" if not d else f"answer had the wrong shape, keys: {list(d)[:6]} - trying the next model)")); return None
             msg = r.text[:220].replace("\n", " ").strip()
             if r.status_code in (500, 503) and attempt < tries - 1 and _t.time() + 30 < deadline:
                 print(f"  ({tag} busy {r.status_code} - waiting 30 s)"); _t.sleep(30); continue
@@ -166,11 +217,14 @@ def ask_writer(prompt, temperature=0.9):
                                   json={"model": model, "messages": [{"role": "user", "content": prompt}], "temperature": temperature,
                                         "response_format": {"type": "json_object"}})
                 if r.status_code == 200:
-                    d = parse(r.json()["choices"][0]["message"]["content"])
-                    if d: print(f"  (written by {model})"); return d
+                    d = parse_any(r.json()["choices"][0]["message"]["content"])
+                    if d and (check is None or check(d)): print(f"  (written by {model})"); return d
+                    print(f"  ({model}: answer had the wrong shape - trying the next one)")
             except Exception:
                 pass
-    return ask(prompt)
+    d = ask(prompt)
+    if isinstance(d, dict) and (check is None or check(d)): return d
+    return d
 
 
 def youtube_views(title):
@@ -229,16 +283,15 @@ grain vanishing from the store...), a clever child or wise elder who investigate
 a surprising but LOGICAL reveal (no real ghosts or magic - everything has a clever explanation), a warm ending and one short lesson.
 No horror, no gore, no violence, nothing frightening for small children. Write in Hindi (Devanagari).
 JSON only: {"ideas": [{"no": 1, "title": "...", "characters": "...", "concept": "...", "conflict": "...", "twist": "...", "moral": "...", "score": 1-10}]}
-"score" = how strongly this idea would make a family click and watch till the end on YouTube.""")
+"score" = how strongly this idea would make a family click and watch till the end on YouTube.""", check=lambda x: len(ideas_from(x)) >= 3)
     else:
         d = ask_writer(avoid + """\nYou are a professional Hindi moral story writer. Generate exactly 15 ORIGINAL, family-friendly Hindi moral story ideas set in
 an Indian village (genre like: two bullocks of Raju, poor farmer and greedy moneylender, two brothers' partition, old farmer's last wish,
 hard-working farmer and lazy son - genre only, do not copy plots). Each idea: interesting opening, relatable village characters, central
 conflict, emotional development, turning point, logical ending, clear moral, enough depth for 15-20 minutes. Write in Hindi (Devanagari).
 JSON only: {"ideas": [{"no": 1, "title": "...", "characters": "...", "concept": "...", "conflict": "...", "twist": "...", "moral": "...", "score": 1-10}]}
-"score" = how strong the idea is for a viral YouTube moral story.""")
-    d = d if isinstance(d, dict) else {}
-    ideas = [i for i in d.get("ideas", []) if isinstance(i, dict) and i.get("title")][:15]
+"score" = how strong the idea is for a viral YouTube moral story.""", check=lambda x: len(ideas_from(x)) >= 3)
+    ideas = ideas_from(d)[:15]
     if not ideas: raise SystemExit("STOPPED: no AI could write story ideas today (see the lines above) - try again later")
     fresh = [i for i in ideas if i["title"] not in used]
     ideas = fresh or ideas

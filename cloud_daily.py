@@ -12,8 +12,17 @@ os.environ.setdefault("M2_SECONDS_PER_PICTURE", "5"); os.environ.setdefault("STU
 import requests
 import studio as S, m2
 T0 = time.time(); LOG = os.path.join(HERE, "cloud_log.txt")
+def scrub(text):
+    """a Kaggle username must never reach cloud_log.txt (it is committed to the repo): it becomes acct-N"""
+    text = str(text)
+    for slot, pre in enumerate(("KAGGLE", "KAGGLE2", "KAGGLE3", "KAGGLE4", "KAGGLE5"), 1):
+        u = os.getenv(f"{pre}_USERNAME") or ""
+        if len(u) >= 4: text = text.replace(u, f"acct-{slot}")
+    return text
+
+
 def say(x):
-    line = f"[{time.strftime('%H:%M:%S')} +{(time.time() - T0) / 60:5.1f} min] {x}"; print(line, flush=True)
+    line = scrub(f"[{time.strftime('%H:%M:%S')} +{(time.time() - T0) / 60:5.1f} min] {x}"); print(line, flush=True)
     open(LOG, "a", encoding="utf-8").write(line + "\n")
 
 
@@ -129,9 +138,9 @@ def ai_prompt(pic, moment):
 def kaggle_accounts():
     """account 1 = KAGGLE_*, account 2 = KAGGLE2_* (each: username + key or api token)"""
     out = []
-    for pre in ("KAGGLE", "KAGGLE2", "KAGGLE3", "KAGGLE4", "KAGGLE5"):
+    for slot, pre in enumerate(("KAGGLE", "KAGGLE2", "KAGGLE3", "KAGGLE4", "KAGGLE5"), 1):
         u, k, t = os.getenv(f"{pre}_USERNAME"), os.getenv(f"{pre}_KEY"), os.getenv(f"{pre}_API_TOKEN")
-        if u and (k or t): out.append({"user": u, "key": k, "token": t, "name": pre})
+        if u and (k or t): out.append({"user": u, "key": k, "token": t, "name": pre, "label": f"acct-{slot}"})
     return out
 
 
@@ -158,6 +167,12 @@ def ledger():
     try: d = json.load(open(LEDGER))
     except Exception: d = {}
     if d.get("week_start") != week_start(): d = {"week_start": week_start(), "used_min": {}, "full": []}
+    by_user = {a["user"]: a["label"] for a in kaggle_accounts()}
+    um = d.setdefault("used_min", {})
+    for u, lab in by_user.items():                                    # an old ledger used the usernames as keys
+        if u in um: um[lab] = round(um.get(lab, 0.0) + um.pop(u), 1)
+    d["used_min"] = {k: v for k, v in um.items() if str(k).startswith("acct-")}
+    d["full"] = [x for x in (by_user.get(x, x) for x in d.get("full", [])) if str(x).startswith("acct-")]
     return d
 
 
@@ -167,8 +182,8 @@ def save_ledger(d):
 
 def room_today(acc, d):
     """clips this account can still make today: what is left of the week, and what fits in one run"""
-    if acc["user"] in d.get("full", []): return 0
-    left = WEEK_BUDGET - d["used_min"].get(acc["user"], 0.0) - SETUP_MIN
+    if acc["label"] in d.get("full", []): return 0
+    left = WEEK_BUDGET - d["used_min"].get(acc["label"], 0.0) - SETUP_MIN
     per_run = float(os.getenv("M2_KAGGLE_MINUTES", "300")) - SETUP_MIN - 40          # 40 min for Kaggle's queue and slow moments
     return max(0, int(min(left, per_run) // PAGE_MIN))
 
@@ -258,7 +273,8 @@ def kaggle_clips(P, st, pages):
         say(f"   prompt {name} (written by {who}): {prompts[name][:110]}...")
     if DRAW: say(f"   {len(DRAW)} pictures will be drawn on Kaggle with ComfyUI ({ {'kontext': 'FLUX Kontext + cast sheet', 'kontext_scene': 'schnell scene + Kontext character edit'}.get(IMAGE_MODEL, 'FLUX schnell') })")
     all_names = sorted(prompts); jobs = []
-    led = ledger(); room = {a["name"]: room_today(a, led) for a in accs}
+    led = ledger(); save_ledger(led)                                  # written at once in the label form (no usernames), even if every job fails later
+    room = {a["name"]: room_today(a, led) for a in accs}
     total_room = sum(room.values())
     if len(all_names) > total_room:                                   # not enough clip time: the IMPORTANT pages get the clips, the rest a picture only
         nums = [int(n_[:3]) for n_ in all_names]
@@ -276,7 +292,7 @@ def kaggle_clips(P, st, pages):
         names = list(all_names)
     pic_only = [n_ for n_ in all_names if n_ not in names]
     for n, a in enumerate(accs):
-        say(f"   account {n + 1}: {led['used_min'].get(a['user'], 0) / 60:.1f} h used this Kaggle week -> room for {room[a['name']]} clips today")
+        say(f"   account {n + 1}: {led['used_min'].get(a['label'], 0) / 60:.1f} h used this Kaggle week -> room for {room[a['name']]} clips today")
     share = {a["name"]: [] for a in accs}; draw_only = {a["name"]: [] for a in accs}
     pending = list(names)
     CH = max(1, int(os.getenv("M2_CHAIN_MAX", "3")))                  # clips of one place are made one after another, each from the last frame
@@ -288,7 +304,7 @@ def kaggle_clips(P, st, pages):
         cur.append(n_)
     if cur: units.append(cur)
     chains = {a["name"]: [] for a in accs}
-    week_left0 = {a["name"]: WEEK_BUDGET - led["used_min"].get(a["user"], 0.0) - SETUP_MIN for a in accs}
+    week_left0 = {a["name"]: WEEK_BUDGET - led["used_min"].get(a["label"], 0.0) - SETUP_MIN for a in accs}
     for u in units:                                                   # each chain to the account with the most weekly time left that has room for ALL of it
         fit = [a for a in accs if room[a["name"]] - len(share[a["name"]]) >= len(u)]
         if not fit: continue
@@ -296,7 +312,7 @@ def kaggle_clips(P, st, pages):
         share[a["name"]].extend(u); chains[a["name"]].append(u)
         for n_ in u: pending.remove(n_)
     if units: say(f"   {len(units)} chains (one place = one continuous shot, max {CH} clips): " + " ".join("[" + ",".join(x[:3] for x in u) + "]" for u in units))
-    week_left = {a["name"]: WEEK_BUDGET - led["used_min"].get(a["user"], 0.0) - SETUP_MIN for a in accs}
+    week_left = {a["name"]: WEEK_BUDGET - led["used_min"].get(a["label"], 0.0) - SETUP_MIN for a in accs}
     while pending:                       # left-over pages one at a time to the account with the MOST WEEKLY TIME LEFT
         open_ = [a for a in accs if len(share[a["name"]]) < room[a["name"]]]
         if not open_: break
@@ -304,7 +320,7 @@ def kaggle_clips(P, st, pages):
         share[a["name"]].append(n_); chains[a["name"]].append([n_])
     pic_only += pending                                               # clip pages that did not fit anywhere also keep at least their own picture
     if pic_only:
-        usable = [a for a in accs if a["user"] not in led.get("full", [])] or accs
+        usable = [a for a in accs if a["label"] not in led.get("full", [])] or accs
         load = {a["name"]: len(share[a["name"]]) * PAGE_MIN for a in usable}
         for n_ in pic_only:                                           # a picture costs only ~0.6-6 min: always drawn, on the account with the lightest load
             a = min(usable, key=lambda x: load[x["name"]]); draw_only[a["name"]].append(n_); load[a["name"]] += IMG_MIN
@@ -315,7 +331,7 @@ def kaggle_clips(P, st, pages):
         try:
             CHAINS_FOR[acc["name"]] = chains.get(acc["name"], [])
             jobs.append((acc, start_job(acc, P, mine, prompts, acc["name"], extra), mine)); SLOT[acc["name"]] = n + 1
-            say(f"   Kaggle job started on account {n + 1} ({acc['user']}): {len(mine)} clips" + (f" + {len(extra)} pictures only" if extra else "")
+            say(f"   Kaggle job started on account {n + 1} ({acc['label']}): {len(mine)} clips" + (f" + {len(extra)} pictures only" if extra else "")
                 + f", pictures by {IMAGE_MODEL}, about {int(len(mine) * PAGE_MIN + len(extra) * IMG_MIN + SETUP_MIN)} min")
         except Exception as e:
             say(f"   account {n + 1} could not start: {str(e)[:200]}")
@@ -333,7 +349,7 @@ def kaggle_clips(P, st, pages):
         stt = done.get(k_id + acc["name"], "not finished in time")
         say(f"   account {n_acc}: Kaggle job status = {stt.strip()[-60:]}")
         if "quota" in stt.lower():
-            led = ledger(); led.setdefault("full", []).append(acc["user"]); save_ledger(led); say(f"   account {n_acc}: weekly GPU quota used up")
+            led = ledger(); led.setdefault("full", []).append(acc["label"]); save_ledger(led); say(f"   account {n_acc}: weekly GPU quota used up")
         od = f"/tmp/m2_out_{acc['name']}"; shutil.rmtree(od, ignore_errors=True); os.makedirs(od)
         try: kaggle_cli("kernels", "output", k_id, "-p", od, acc=acc)          # also after an error: whatever was made is used
         except Exception as e: say(f"   account {n_acc}: could not download the results ({str(e)[:120]})"); continue
@@ -348,7 +364,7 @@ def kaggle_clips(P, st, pages):
             say(f"   account {n_acc}: no job report -> results not trusted, NOT used"); continue
         if rep:
             r_ = json.load(open(rep[0]))
-            led = ledger(); led["used_min"][acc["user"]] = round(led["used_min"].get(acc["user"], 0.0) + float(r_.get("minutes") or 0), 1); save_ledger(led)
+            led = ledger(); led["used_min"][acc["label"]] = round(led["used_min"].get(acc["label"], 0.0) + float(r_.get("minutes") or 0), 1); save_ledger(led)
             say(f"   account {n_acc} report: pictures {len(r_.get('pictures_made', []))}/{len(r_.get('pictures_asked', []))}, "
                 f"clips {len(r_.get('clips_made', []))}/{len(r_.get('clips_asked', []))}, {r_.get('minutes')} min on Kaggle, "
                 f"smooth 32 fps: {'yes' if r_.get('smooth_rife') else 'no'}, sharper clips: {r_.get('upscaled', 0)}")
