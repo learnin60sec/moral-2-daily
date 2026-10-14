@@ -1,12 +1,11 @@
 {
  "week_start": "2026-10-10",
  "used_min": {
-  "hasanpurjunction": 1291.5,
-  "KDL_meesho": 778,
-  "morel3ac": 374.6,
-  "kdlmeesho": 261.5,
-  "shabana4ac": 378.4,
-  "jaibunissa5ac": 300.4
+  "acct-1": 1291.5,
+  "acct-2": 393.6,
+  "acct-3": 436.7,
+  "acct-4": 378.4,
+  "acct-5": 384.7
  },
  "full": []
 }

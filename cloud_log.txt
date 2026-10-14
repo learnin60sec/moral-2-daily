@@ -707,3 +707,71 @@
 [09:29:33 +  0.0 min]     style: 2d_mystery | picture model: schnell | film look: none | upload: no | Gemini keys: 2
 [09:29:33 +  0.0 min]    Kaggle can animate 60 pages today -> up to 5.2 min with a moving clip on EVERY page
 [09:29:33 +  0.0 min] STEP 1 story + voice
+[09:40:45 +  0.0 min] === CLOUD DAILY: 1-min video, AI clips: ALL pictures ===
+[09:40:45 +  0.0 min]     style: 2d_mystery | picture model: schnell | film look: none | upload: no | Gemini keys: 2
+[09:40:45 +  0.0 min]    Kaggle can animate 60 pages today -> up to 5.2 min with a moving clip on EVERY page
+[09:40:45 +  0.0 min] STEP 1 story + voice
+[09:44:37 +  3.9 min]    पुराने सूखे कुएं की मीठी खुशबू: 13 pictures needed
+[09:44:37 +  3.9 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX schnell) in the same job as the clips
+[09:44:37 +  3.9 min] STEP 3+4 key moments -> Kaggle clips
+[09:44:37 +  3.9 min]    prompt 001.png (written by story text (picture drawn on Kaggle)): Midnight, a stone well under eerie blue moonlight with drifting mist; the well is visible, mist swirling aroun...
+[09:44:37 +  3.9 min]    prompt 002.png (written by story text (picture drawn on Kaggle)): मालती नानी points at a dark silhouette near the well, whispering about a ghost’s shadow under the moon. The ch...
+[09:44:37 +  3.9 min]    prompt 003.png (written by story text (picture drawn on Kaggle)): Morning village square bathed in dusty warm sunlight; villagers whisper, आरव spots जग्गू हलवाई running anxious...
+[09:44:37 +  3.9 min]    prompt 004.png (written by story text (picture drawn on Kaggle)): मालती नानी leans close to आरव, whispering that जग्गू is going to chase away a ghost, while villagers watch. Th...
+[09:44:37 +  3.9 min]    prompt 005.png (written by story text (picture drawn on Kaggle)): Afternoon, the old dry stone well overgrown with vines; tire marks and a thick rope are tied to it, seen by आर...
+[09:44:37 +  3.9 min]    prompt 006.png (written by story text (picture drawn on Kaggle)): आरव leans over the well’s edge, a cold gust of air rises from the darkness below. The characters make small na...
+[09:44:37 +  3.9 min]    prompt 007.png (written by story text (picture drawn on Kaggle)): Dusk at the well’s edge, cool shadows; आरव hangs a swinging brass lantern on the stone. The characters make sm...
+[09:44:37 +  3.9 min]    prompt 008.png (written by story text (picture drawn on Kaggle)): A heavy shadow stirs inside the well, sweet steam rises, and मालती नानी screams “आरव हटो!”. The characters mak...
+[09:44:37 +  3.9 min]    prompt 009.png (written by story text (picture drawn on Kaggle)): Deep inside, warm yellow lantern light reveals clay pots tied to ropes; जग्गू हलवाई stands crying, explaining ...
+[09:44:37 +  3.9 min]    prompt 010.png (written by story text (picture drawn on Kaggle)): आरव laughs at जग्गू’s story, saying the ghost must be eating rabri, both characters visible. The characters ma...
+[09:44:37 +  3.9 min]    prompt 011.png (written by story text (picture drawn on Kaggle)): Twilight outside the well, villagers with lanterns gather; मालती नानी smiles and kisses आरव’s forehead in reli...
+[09:44:37 +  3.9 min]    prompt 012.png (written by story text (picture drawn on Kaggle)): जग्गू हलवाई hands out chilled, creamy rabri to the crowd, everyone smiling. The characters make small natural ...
+[09:44:37 +  3.9 min]    prompt 013.png (written by story text (picture drawn on Kaggle)): The villagers laugh together, superstitions turned to joy, with आरव, मालती नानी, and जग्गू हलवाई in the scene....
+[09:44:37 +  3.9 min]    13 pictures will be drawn on Kaggle with ComfyUI (FLUX schnell)
+[09:44:37 +  3.9 min]    account 1: 21.5 h used this Kaggle week -> room for 12 clips today
+[09:44:37 +  3.9 min]    account 2: 4.4 h used this Kaggle week -> room for 12 clips today
+[09:44:37 +  3.9 min]    account 3: 6.2 h used this Kaggle week -> room for 12 clips today
+[09:44:37 +  3.9 min]    account 4: 6.3 h used this Kaggle week -> room for 12 clips today
+[09:44:37 +  3.9 min]    account 5: 5.0 h used this Kaggle week -> room for 12 clips today
+[09:44:37 +  3.9 min]    6 chains (one place = one continuous shot, max 3 clips): [001,002] [003,004] [005,006] [007,008] [009,010] [011,012,013]
+[09:44:46 +  4.0 min]    Kaggle job started on account 2 (acct-2): 6 clips, pictures by schnell, about 136 min
+[09:44:55 +  4.2 min]    Kaggle job started on account 3 (acct-3): 3 clips, pictures by schnell, about 78 min
+[09:45:24 +  4.6 min]    Kaggle job started on account 5 (acct-5): 4 clips, pictures by schnell, about 97 min
+[09:56:41 + 15.9 min]    Kaggle working ... 0 of 3 accounts finished
+[10:11:03 + 30.3 min]    Kaggle working ... 0 of 3 accounts finished
+[10:26:25 + 45.7 min]    Kaggle working ... 0 of 3 accounts finished
+[10:40:47 + 60.0 min]    Kaggle working ... 0 of 3 accounts finished
+[10:56:07 + 75.4 min]    Kaggle working ... 1 of 3 accounts finished
+[11:11:22 + 90.6 min]    Kaggle working ... 2 of 3 accounts finished
+[11:26:29 +105.7 min]    Kaggle working ... 2 of 3 accounts finished
+[11:41:37 +120.9 min]    Kaggle working ... 2 of 3 accounts finished
+[11:57:46 +137.0 min]    account 2: Kaggle job status = 1014-094437-kaggle2 has status "kernelworkerstatus.complete"
+[11:57:52 +137.1 min]    account 2 report: pictures 6/6, clips 6/6, 132.1 min on Kaggle, smooth 32 fps: yes, sharper clips: 6
+[11:57:53 +137.1 min]    picture 007.png drawn on Kaggle
+[11:57:53 +137.1 min]    picture 001.png drawn on Kaggle
+[11:57:53 +137.1 min]    picture 008.png drawn on Kaggle
+[11:57:54 +137.1 min]    picture 004.png drawn on Kaggle
+[11:57:54 +137.1 min]    picture 003.png drawn on Kaggle
+[11:57:55 +137.2 min]    picture 002.png drawn on Kaggle
+[11:57:55 +137.2 min]    account 3: Kaggle job status = 1014-094446-kaggle3 has status "kernelworkerstatus.complete"
+[11:57:58 +137.2 min]    account 3 report: pictures 3/3, clips 3/3, 62.1 min on Kaggle, smooth 32 fps: yes, sharper clips: 3
+[11:57:58 +137.2 min]    picture 011.png drawn on Kaggle
+[11:57:59 +137.2 min]    picture 012.png drawn on Kaggle
+[11:57:59 +137.2 min]    picture 013.png drawn on Kaggle
+[11:57:59 +137.2 min]    account 5: Kaggle job status = 1014-094455-kaggle5 has status "kernelworkerstatus.complete"
+[11:58:03 +137.3 min]    account 5 report: pictures 4/4, clips 4/4, 84.3 min on Kaggle, smooth 32 fps: yes, sharper clips: 4
+[11:58:03 +137.3 min]    picture 009.png drawn on Kaggle
+[11:58:04 +137.3 min]    picture 010.png drawn on Kaggle
+[11:58:04 +137.3 min]    picture 006.png drawn on Kaggle
+[11:58:04 +137.3 min]    picture 005.png drawn on Kaggle
+[11:58:04 +137.3 min]    13 AI clips received (of 13)
+[11:58:04 +137.3 min] STEP 4b clip doctor
+[11:58:36 +137.8 min]    CLIP DOCTOR: 003.mp4 REJECTED - melting / scene jump (similarity 0.01, jump 31) -> this page uses the living picture
+[11:58:36 +137.9 min]    CLIP DOCTOR: 004.mp4 REJECTED - melting / scene jump (similarity 0.00, jump 19) -> this page uses the living picture
+[11:58:51 +138.1 min]    CLIP DOCTOR: 007.mp4 REJECTED - melting / scene jump (similarity 0.02, jump 13) -> this page uses the living picture
+[11:58:58 +138.2 min]    CLIP DOCTOR: 010.mp4 REJECTED - melting / scene jump (similarity 0.02, jump 22) -> this page uses the living picture
+[11:58:58 +138.2 min]    CLIP DOCTOR: 011.mp4 REJECTED - melting / scene jump (similarity -0.06, jump 14) -> this page uses the living picture
+[11:59:03 +138.3 min]    CLIP DOCTOR: 8 of 13 clips passed
+[11:59:03 +138.3 min] STEP 5 video
+[12:07:14 +146.5 min]    QC: CORRECTED & COMPLETE
+[12:07:14 +146.5 min] === DONE in 146 min ===
