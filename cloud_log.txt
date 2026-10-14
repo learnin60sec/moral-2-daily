@@ -775,3 +775,76 @@
 [11:59:03 +138.3 min] STEP 5 video
 [12:07:14 +146.5 min]    QC: CORRECTED & COMPLETE
 [12:07:14 +146.5 min] === DONE in 146 min ===
+[15:10:47 +  0.0 min] === CLOUD DAILY: 1-min video, AI clips: ALL pictures ===
+[15:10:47 +  0.0 min]     style: 2d_mystery | picture model: schnell | film look: none | upload: no | Gemini keys: 2
+[15:10:47 +  0.0 min]    Kaggle can animate 50 pages today -> up to 3.9 min with a moving clip on EVERY page
+[15:10:47 +  0.0 min] STEP 1 story + voice
+[15:21:12 + 10.4 min]    पंचरत्न मंदिर की गायब मूर्ति और गूंजता शंख: 11 pictures needed
+[15:21:12 + 10.4 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX schnell) in the same job as the clips
+[15:21:12 + 10.4 min] STEP 3+4 key moments -> Kaggle clips
+[15:21:12 + 10.4 min]    prompt 001.png (written by story script (picture drawn on Kaggle)): A wide shot captures the exterior of the ancient Panchratna temple in Sonpur village during a warm afternoon, ...
+[15:21:12 + 10.4 min]    prompt 002.png (written by story script (picture drawn on Kaggle)): This is a medium shot set in the Sonpur village ancient temple courtyard during the evening dusk, featuring di...
+[15:21:12 + 10.4 min]    prompt 003.png (written by story script (picture drawn on Kaggle)): This is a medium shot set in the Sonpur village ancient temple courtyard during the evening dusk, under dim or...
+[15:21:12 + 10.4 min]    prompt 004.png (written by story script (picture drawn on Kaggle)): Medium shot, night, illuminated by the harsh, flickering yellow light of an overhead streetlamp creating long ...
+[15:21:12 + 10.4 min]    prompt 005.png (written by story script (picture drawn on Kaggle)): Medium shot, night, bathed in the dim, flickering orange light of the central streetlamp which casts eerie sha...
+[15:21:12 + 10.4 min]    prompt 006.png (written by story script (picture drawn on Kaggle)): Medium shot, night, faint beam of flashlight casting bright white and pale yellow light in pitch darkness, 2D ...
+[15:21:12 + 10.4 min]    prompt 007.png (written by story script (picture drawn on Kaggle)): Medium shot, night, warm golden glow from an oil lantern, 2D cartoon style. Dadaji, a 65-year-old man with wri...
+[15:21:12 + 10.4 min]    prompt 008.png (written by story script (picture drawn on Kaggle)): A medium shot set inside the Sonpur village temple inner sanctum corner at deep night, lit by a strong directi...
+[15:21:12 + 10.4 min]    prompt 009.png (written by story script (picture drawn on Kaggle)): A medium shot set inside the Sonpur village temple corner at night, illuminated by bright moonlight shining th...
+[15:21:12 + 10.4 min]    prompt 010.png (written by story script (picture drawn on Kaggle)): A medium shot set inside the Sonpur village temple corner at night, illuminated by bright moonlight shining th...
+[15:21:12 + 10.4 min]    prompt 011.png (written by story script (picture drawn on Kaggle)): A medium shot set inside the Sonpur village temple corner at night, illuminated by bright moonlight shining th...
+[15:21:12 + 10.4 min]    11 pictures will be drawn on Kaggle with ComfyUI (FLUX schnell)
+[15:21:12 + 10.4 min]    account 1: 21.5 h used this Kaggle week -> room for 10 clips today
+[15:21:12 + 10.4 min]    account 2: 6.6 h used this Kaggle week -> room for 10 clips today
+[15:21:12 + 10.4 min]    account 3: 7.3 h used this Kaggle week -> room for 10 clips today
+[15:21:12 + 10.4 min]    account 4: 6.3 h used this Kaggle week -> room for 10 clips today
+[15:21:12 + 10.4 min]    account 5: 6.4 h used this Kaggle week -> room for 10 clips today
+[15:21:12 + 10.4 min]    6 chains (one place = one continuous shot, max 3 clips): [001] [002,003] [004,005] [006,007] [008] [009,010,011]
+[15:21:41 + 10.9 min]    Kaggle job started on account 2 (acct-2): 5 clips, pictures by schnell, about 117 min
+[15:22:12 + 11.4 min]    Kaggle job started on account 4 (acct-4): 3 clips, pictures by schnell, about 78 min
+[15:22:39 + 11.9 min]    Kaggle job started on account 5 (acct-5): 3 clips, pictures by schnell, about 78 min
+[15:26:44 + 15.9 min]    Kaggle working ... 0 of 3 accounts finished
+[15:41:02 + 30.2 min]    Kaggle working ... 0 of 3 accounts finished
+[15:56:21 + 45.6 min]    Kaggle working ... 0 of 3 accounts finished
+[16:11:41 + 60.9 min]    Kaggle working ... 0 of 3 accounts finished
+[16:25:58 + 75.2 min]    Kaggle working ... 1 of 3 accounts finished
+[16:41:11 + 90.4 min]    Kaggle working ... 2 of 3 accounts finished
+[16:56:18 +105.5 min]    Kaggle working ... 2 of 3 accounts finished
+[17:11:25 +120.6 min]    Kaggle working ... 2 of 3 accounts finished
+[17:26:31 +135.7 min]    Kaggle working ... 2 of 3 accounts finished
+[17:29:32 +138.8 min]    account 2: Kaggle job status = 1014-152112-kaggle2 has status "kernelworkerstatus.complete"
+[17:29:35 +138.8 min]    account 2 report: pictures 5/5, clips 5/5, 78.0 min on Kaggle, smooth 32 fps: yes, sharper clips: 5
+[17:29:35 +138.8 min]    picture 011.png drawn on Kaggle
+[17:29:36 +138.8 min]    picture 009.png drawn on Kaggle
+[17:29:36 +138.8 min]    picture 004.png drawn on Kaggle
+[17:29:36 +138.8 min]    picture 010.png drawn on Kaggle
+[17:29:37 +138.8 min]    picture 005.png drawn on Kaggle
+[17:29:37 +138.8 min]    account 4: Kaggle job status = 1014-152141-kaggle4 has status "kernelworkerstatus.complete"
+[17:29:39 +138.9 min]    account 4 report: pictures 3/3, clips 3/3, 126.5 min on Kaggle, smooth 32 fps: yes, sharper clips: 3
+[17:29:39 +138.9 min]    account 4: clips made again (page: tries) {'006.png': 3, '007.png': 3} | still doubtful after the tries {'006.png': 'melt', '007.png': 'unstable'}
+[17:29:39 +138.9 min]    picture 007.png drawn on Kaggle
+[17:29:40 +138.9 min]    picture 001.png drawn on Kaggle
+[17:29:40 +138.9 min]    picture 006.png drawn on Kaggle
+[17:29:40 +138.9 min]    account 5: Kaggle job status = 1014-152212-kaggle5 has status "kernelworkerstatus.complete"
+[17:29:42 +138.9 min]    account 5 report: pictures 3/3, clips 3/3, 58.5 min on Kaggle, smooth 32 fps: yes, sharper clips: 3
+[17:29:42 +138.9 min]    account 5: clips made again (page: tries) {'003.png': 2} | still doubtful after the tries -
+[17:29:42 +138.9 min]    picture 008.png drawn on Kaggle
+[17:29:43 +138.9 min]    picture 003.png drawn on Kaggle
+[17:29:43 +138.9 min]    picture 002.png drawn on Kaggle
+[17:29:43 +138.9 min]    11 AI clips received (of 11)
+[17:29:43 +138.9 min] STEP 4b clip doctor
+[17:29:43 +138.9 min]    CLIP DOCTOR: 001.mp4 OK   [usual step 0.9, biggest step 2.0 at 3.6 s (x2.0), similarity 0.42]
+[17:29:44 +138.9 min]    CLIP DOCTOR: 002.mp4 KEPT - strong movement   [usual step 2.3, biggest step 3.7 at 1.4 s (x1.6), similarity 0.06]
+[17:29:44 +138.9 min]    CLIP DOCTOR: 003.mp4 KEPT - strong movement   [usual step 1.5, biggest step 3.4 at 1.6 s (x2.3), similarity 0.08]
+[17:29:44 +138.9 min]    CLIP DOCTOR: 004.mp4 OK   [usual step 3.0, biggest step 8.7 at 1.9 s (x2.9), similarity 0.41]
+[17:29:45 +139.0 min]    CLIP DOCTOR: 005.mp4 KEPT - strong movement   [usual step 4.0, biggest step 9.5 at 1.1 s (x2.4), similarity 0.05]
+[17:29:45 +139.0 min]    CLIP DOCTOR: 006.mp4 KEPT - strong movement   [usual step 2.8, biggest step 8.9 at 0.6 s (x3.1), similarity -0.12]
+[17:29:45 +139.0 min]    CLIP DOCTOR: 007.mp4 KEPT - strong movement   [usual step 3.3, biggest step 12.4 at 0.1 s (x3.7), similarity -0.01]
+[17:29:46 +139.0 min]    CLIP DOCTOR: 008.mp4 OK   [usual step 3.1, biggest step 4.7 at 3.6 s (x1.5), similarity 0.22]
+[17:29:46 +139.0 min]    CLIP DOCTOR: 009.mp4 KEPT - strong movement   [usual step 3.0, biggest step 5.9 at 2.4 s (x1.9), similarity 0.01]
+[17:29:46 +139.0 min]    CLIP DOCTOR: 010.mp4 KEPT - strong movement   [usual step 5.9, biggest step 12.7 at 0.8 s (x2.2), similarity -0.04]
+[17:29:47 +139.0 min]    CLIP DOCTOR: 011.mp4 KEPT - strong movement   [usual step 4.1, biggest step 6.6 at 3.9 s (x1.6), similarity 0.01]
+[17:29:47 +139.0 min]    CLIP DOCTOR: 11 clips, all kept as videos (0 trimmed at a scene cut)
+[17:29:47 +139.0 min] STEP 5 video
+[17:36:14 +145.4 min]    QC: CORRECTED & COMPLETE
+[17:36:14 +145.4 min] === DONE in 145 min ===
