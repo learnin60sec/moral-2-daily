@@ -97,6 +97,7 @@ jobs:
           M2_UPSCALE: "1"                # cartoon upscaler: sharper clips
           M2_SECONDS_PER_PICTURE: "5.5"   # one page (picture + clip) every 5.5 s: a 5-s clip then plays at nearly normal speed
           M2_KAGGLE_MINUTES: "300"        # GitHub waits this long for Kaggle
+          M2_SHORTS: "1"                 # a teaser Short (vertical, ~50 s) after every main video
           M2_CLIPS: "all"                # every picture becomes a Wan 2.2 14B clip
           STUDIO_UPLOAD: schedule
           STUDIO_TIMES: "18:00"
