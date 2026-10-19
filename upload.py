@@ -187,6 +187,17 @@ JSON only: {{"title": "...", "description": "...", "tags": ["..."], "thumbnail_t
     if "made with the help of AI" not in desc: desc += "\n\nThis story was made with the help of AI."
     if "#" not in desc: desc += "\n#HindiStories #MysteryStory #AnimatedStory #BedtimeStory #StoriesForKids"
     tags = [t for t in (_en(x) for x in (d.get("tags") or [])) if t][:25] or ["hindi stories", "hindi mystery story", "animated story in hindi", "bedtime story", "moral story"]
+    hinglish = (["hindi kahani", "hindi kahaniya", "rahasya kahani", "jasoosi kahani", "mystery story in hindi", "hindi cartoon story", "cartoon kahani", "village mystery story hindi", "kids story in hindi", "bedtime story in hindi"]
+                if mystery else ["hindi kahani", "hindi kahaniya", "moral story in hindi", "naitik kahani", "hindi cartoon story", "cartoon kahani", "kids story in hindi", "bedtime story in hindi"])
+    seen_t = set(); merged = []
+    for t_ in hinglish + tags:                                         # Hindi-speaking viewers type these Latin-letter words
+        if t_.lower() not in seen_t and sum(len(x) + 1 for x in merged) + len(t_) + 1 <= 470: merged.append(t_); seen_t.add(t_.lower())
+    tags = merged
+    keywords = "Hindi Kahani | Rahasya Kahani | Mystery Story in Hindi | Cartoon Kahani" if mystery else "Hindi Kahani | Moral Story in Hindi | Cartoon Kahani | Kids Story in Hindi"
+    body_lines = [l for l in desc.splitlines() if not re.fullmatch(r"(#\w+\s*)+", l.strip())]
+    desc = "\n".join(body_lines).strip()
+    if "made with the help of AI" not in desc: desc += "\n\nThis story was made with the help of AI."
+    desc += "\n\n" + keywords + "\n\n" + "#HindiKahani #MysteryStory #HindiStories #AnimatedStory #BedtimeStory" if mystery else "\n\n" + keywords + "\n\n" + "#HindiKahani #MoralStory #HindiStories #AnimatedStory #BedtimeStory"
     thumb = _en(d.get("thumbnail_text")).upper().strip(' "') or ("CAN YOU SOLVE IT?" if mystery else "WATCH TILL THE END")
     return {"title": title, "description": desc[:4900], "tags": tags, "thumb": thumb[:28], "kind": kind}
 
@@ -298,12 +309,14 @@ def upload_m2(P, slot=0):
     st = P.load("story.json"); sys.path.insert(0, HERE); import studio as S
     m = english_metadata(P, st)                                       # title, description, tags and thumbnail words: all English
     print("  title:", m["title"]); print("  thumbnail words:", m["thumb"])
+    try: P.save("youtube_text.json", m)                              # the Short reuses it
+    except Exception: pass
     mode = os.getenv("STUDIO_UPLOAD", "schedule").lower()
     status = {"privacyStatus": "private" if mode in ("private", "schedule") else "public",
               "selfDeclaredMadeForKids": os.getenv("STUDIO_AUDIENCE", "family").lower() == "kids", "containsSyntheticMedia": True}
     if mode == "schedule": status["publishAt"] = publish_time(slot)
     body = {"snippet": {"title": m["title"], "description": m["description"], "tags": m["tags"], "categoryId": "1",
-                        "defaultLanguage": "hi", "defaultAudioLanguage": "hi"}, "status": status}
+                        "defaultLanguage": "en", "defaultAudioLanguage": "hi"}, "status": status}
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaFileUpload
     yt = build("youtube", "v3", credentials=credentials())
@@ -331,6 +344,39 @@ def upload_m2(P, slot=0):
         lists = []; print("  (playlists not updated:", str(e)[:120], ")")
     info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "mode": mode, "publishAt": status.get("publishAt"), "playlists": lists}
     P.save("UPLOADED.json", info); return info
+
+
+def _publish_after(rfc, minutes=30):
+    """an RFC3339 time + minutes (the Short goes public after the main video, so the link in its description works)"""
+    t = datetime.datetime.strptime(rfc, "%Y-%m-%dT%H:%M:%SZ") + datetime.timedelta(minutes=minutes)
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def upload_short(P, st, main_info, short_path):
+    """the Short: English title + #Shorts, the link to the full video first in the description, published 30 minutes after the main video"""
+    if os.path.exists(P.p("SHORT_UPLOADED.json")): return P.load("SHORT_UPLOADED.json")
+    m = P.load("youtube_text.json"); link = main_info["url"]
+    base = re.sub(r"\s*\|\s*Hindi (Mystery|Moral) Story\s*$", "", m["title"]).strip()
+    title = (base + " #Shorts")[:100]
+    first = next((l for l in m["description"].splitlines() if l.strip()), "")
+    desc = (f"Watch the FULL story here: {link}\n\n{first}\n\nNarrated in Hindi with Hindi subtitles.\nA new story every day at 6 PM IST - subscribe to The Moral Story Club.\n\n"
+            "This story was made with the help of AI.\n\n#Shorts #HindiKahani #MysteryStory #HindiStories")
+    mode = os.getenv("STUDIO_UPLOAD", "schedule").lower()
+    status = {"privacyStatus": "private" if mode in ("private", "schedule") else "public",
+              "selfDeclaredMadeForKids": os.getenv("STUDIO_AUDIENCE", "family").lower() == "kids", "containsSyntheticMedia": True}
+    if mode == "schedule" and main_info.get("publishAt"): status["publishAt"] = _publish_after(main_info["publishAt"], int(os.getenv("M2_SHORT_DELAY_MIN", "30")))
+    elif mode == "schedule": status["publishAt"] = publish_time(0)
+    body = {"snippet": {"title": title, "description": desc, "tags": (m.get("tags") or [])[:20] + ["shorts"], "categoryId": "1", "defaultLanguage": "en", "defaultAudioLanguage": "hi"}, "status": status}
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaFileUpload
+    yt = build("youtube", "v3", credentials=credentials())
+    req = yt.videos().insert(part="snippet,status", body=body, media_body=MediaFileUpload(short_path, chunksize=8 * 1024 * 1024, resumable=True))
+    res = None
+    while res is None:
+        stt, res = req.next_chunk()
+        if stt: print(f"  uploading the Short {int(stt.progress() * 100)}%")
+    info = {"id": res["id"], "url": f"https://youtube.com/shorts/{res['id']}", "title": title, "publishAt": status.get("publishAt")}
+    P.save("SHORT_UPLOADED.json", info); return info
 
 
 if __name__ == "__main__":

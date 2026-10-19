@@ -556,6 +556,12 @@ def main():
         say("STEP 6 YouTube upload")
         try:
             import upload as U; info = U.upload_m2(P); say(f"   {info['url'] + ' (' + info['mode'] + ')' if info else 'not uploaded (QC)'}")
+            if info and os.getenv("M2_SHORTS", "1") == "1":                  # the teaser Short (vertical, ~50 s, ends at a cliffhanger)
+                try:
+                    import shorts as SH
+                    st_ = P.load("story.json"); sp = SH.make_short(P, st_, P.load("youtube_text.json")); say(f"   Short made: {os.path.getsize(sp) // 1024} KB")
+                    si = U.upload_short(P, st_, info, sp); say(f"   Short uploaded: {si['url']} (public at {si.get('publishAt') or 'once'})")
+                except Exception as e: say(f"   Short skipped: {str(e)[:200]}")
         except Exception as e: say(f"   upload ERROR: {str(e)[:200]}")
     shutil.copy(P.p("FINAL.mp4"), os.path.join(HERE, "FINAL_TODAY.mp4"))
     if os.getenv("GITHUB_EVENT_NAME", "schedule") == "schedule":      # only the automatic 2D run counts as "today's video is done"

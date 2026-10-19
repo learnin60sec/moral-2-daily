@@ -1488,6 +1488,7 @@ def video(subtitles=True):
     TO = (S.probe(outro_v)[0] + 1.5) if outro_v else 4.0
     story_len = total; total = TI + story_len + TO
     bt = [x + TI for x in beat_times(P, st, story_len)]
+    P.save("timeline.json", {"intro": TI, "story": story_len, "outro": TO, "total": total, "beat_times": bt, "hook_part": st.get("hook_part", 0)})   # for the Short
     marks = len([m for m in P.load("voice_marks.json", []) if m.get("kind") == "WordBoundary"])
     say(f"  title card {TI:.1f} s | story {story_len:.0f} s | moral card {TO:.1f} s ({tone} voice)")
     say(f"  {len(st['beats'])} story parts timed " + ("word-by-word from the voice" if marks else "by text length (voice gave no word times)"))
