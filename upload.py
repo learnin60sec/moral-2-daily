@@ -152,6 +152,42 @@ def _en(text):
     return t.strip()
 
 
+def fit_tags(tags, limit=450):
+    """tags the way YouTube counts them: a tag that contains a space is counted WITH quotes (+2), every tag +1 for its comma; the total must stay under 500.
+    No < > or quotes inside a tag, at most 80 characters each, no duplicates; the order is kept (the first tags matter most)"""
+    out, seen, total = [], set(), 0
+    for t in tags or []:
+        t = re.sub(r'[<>"]', "", str(t)).strip()[:80].strip()
+        if len(t) < 2 or t.lower() in seen: continue
+        cost = len(t) + (2 if " " in t else 0) + 1
+        if total + cost > limit: continue
+        out.append(t); seen.add(t.lower()); total += cost
+    return out
+
+
+def _insert_safely(yt, body, media_path, label="video"):
+    """upload; if YouTube rejects the keywords (HTTP 400 'invalid video keywords') the SAME upload is repeated with fewer tags and then with none -
+    a video must never be lost because of its tags"""
+    from googleapiclient.http import MediaFileUpload
+    try: from googleapiclient.errors import HttpError
+    except Exception: HttpError = Exception
+    all_tags = list(body["snippet"].get("tags") or []); tries = (all_tags, fit_tags(all_tags, 250)[:10], [])
+    for attempt, tags in enumerate(tries):
+        body["snippet"]["tags"] = tags
+        try:
+            req = yt.videos().insert(part="snippet,status", body=body, media_body=MediaFileUpload(media_path, chunksize=8 * 1024 * 1024, resumable=True))
+            res = None
+            while res is None:
+                stt, res = req.next_chunk()
+                if stt: print(f"  uploading the {label} {int(stt.progress() * 100)}%")
+            return res
+        except HttpError as e:
+            msg = str(e).lower()
+            if attempt < len(tries) - 1 and ("keyword" in msg or "invalidtags" in msg or "tags" in msg):
+                print(f"  YouTube did not accept the tags ({str(e)[:90].strip()}) - trying again with {'fewer' if attempt == 0 else 'no'} tags"); continue
+            raise
+
+
 def english_metadata(P, st):
     """YouTube title, description, tags and thumbnail words - ALL English, written to make people click (curiosity, never the answer)"""
     sys.path.insert(0, HERE); import studio as S
@@ -189,10 +225,7 @@ JSON only: {{"title": "...", "description": "...", "tags": ["..."], "thumbnail_t
     tags = [t for t in (_en(x) for x in (d.get("tags") or [])) if t][:25] or ["hindi stories", "hindi mystery story", "animated story in hindi", "bedtime story", "moral story"]
     hinglish = (["hindi kahani", "hindi kahaniya", "rahasya kahani", "jasoosi kahani", "mystery story in hindi", "hindi cartoon story", "cartoon kahani", "village mystery story hindi", "kids story in hindi", "bedtime story in hindi"]
                 if mystery else ["hindi kahani", "hindi kahaniya", "moral story in hindi", "naitik kahani", "hindi cartoon story", "cartoon kahani", "kids story in hindi", "bedtime story in hindi"])
-    seen_t = set(); merged = []
-    for t_ in hinglish + tags:                                         # Hindi-speaking viewers type these Latin-letter words
-        if t_.lower() not in seen_t and sum(len(x) + 1 for x in merged) + len(t_) + 1 <= 470: merged.append(t_); seen_t.add(t_.lower())
-    tags = merged
+    tags = fit_tags(hinglish + tags)                                   # Hindi-speaking viewers type these Latin-letter words; counted the way YouTube counts
     keywords = "Hindi Kahani | Rahasya Kahani | Mystery Story in Hindi | Cartoon Kahani" if mystery else "Hindi Kahani | Moral Story in Hindi | Cartoon Kahani | Kids Story in Hindi"
     body_lines = [l for l in desc.splitlines() if not re.fullmatch(r"(#\w+\s*)+", l.strip())]
     desc = "\n".join(body_lines).strip()
@@ -320,11 +353,7 @@ def upload_m2(P, slot=0):
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaFileUpload
     yt = build("youtube", "v3", credentials=credentials())
-    req = yt.videos().insert(part="snippet,status", body=body, media_body=MediaFileUpload(video, chunksize=8 * 1024 * 1024, resumable=True))
-    res = None
-    while res is None:
-        stt, res = req.next_chunk()
-        if stt: print(f"  uploading {int(stt.progress() * 100)}%")
+    res = _insert_safely(yt, body, video, "video")
     vid = res["id"]
     import glob as _g
     pics = sorted(_g.glob(os.path.join(P.dir, "pictures*", "*.png")))
@@ -366,15 +395,11 @@ def upload_short(P, st, main_info, short_path):
               "selfDeclaredMadeForKids": os.getenv("STUDIO_AUDIENCE", "family").lower() == "kids", "containsSyntheticMedia": True}
     if mode == "schedule" and main_info.get("publishAt"): status["publishAt"] = _publish_after(main_info["publishAt"], int(os.getenv("M2_SHORT_DELAY_MIN", "30")))
     elif mode == "schedule": status["publishAt"] = publish_time(0)
-    body = {"snippet": {"title": title, "description": desc, "tags": (m.get("tags") or [])[:20] + ["shorts"], "categoryId": "1", "defaultLanguage": "en", "defaultAudioLanguage": "hi"}, "status": status}
+    body = {"snippet": {"title": title, "description": desc, "tags": fit_tags((m.get("tags") or [])[:20] + ["shorts"]), "categoryId": "1", "defaultLanguage": "en", "defaultAudioLanguage": "hi"}, "status": status}
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaFileUpload
     yt = build("youtube", "v3", credentials=credentials())
-    req = yt.videos().insert(part="snippet,status", body=body, media_body=MediaFileUpload(short_path, chunksize=8 * 1024 * 1024, resumable=True))
-    res = None
-    while res is None:
-        stt, res = req.next_chunk()
-        if stt: print(f"  uploading the Short {int(stt.progress() * 100)}%")
+    res = _insert_safely(yt, body, short_path, "Short")
     info = {"id": res["id"], "url": f"https://youtube.com/shorts/{res['id']}", "title": title, "publishAt": status.get("publishAt")}
     P.save("SHORT_UPLOADED.json", info); return info
 
