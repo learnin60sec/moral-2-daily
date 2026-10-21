@@ -524,7 +524,7 @@ def main():
         if fit < minutes:
             if fit < 1.0: say("STOP: not enough Kaggle time left this week for a full-clip video - the week resets on Saturday"); sys.exit(1)
             say(f"   video shortened from {minutes} to {fit} min so no page is left without a clip"); minutes = fit
-    say("STEP 1 story + voice"); P = m2.story(minutes); st = P.load("story.json")
+    say("STEP 1 story + voice"); P = m2.story(minutes); st = P.load("story.json"); say(f"   real YouTube search matched by the story: {st.get('search_phrase') or '-'}")
     say(f"   {st.get('title', '')}: {len(st['pictures'])} pictures needed")
     src_ = os.getenv("M2_PICTURES", "kaggle").lower()
     if src_ == "kaggle" and kaggle_accounts():                        # pictures drawn on Kaggle with ComfyUI (FLUX), no Cloudflare limits
@@ -555,7 +555,7 @@ def main():
     if os.getenv("M2_AUTO_UPLOAD", "1") == "1" and os.path.exists(os.path.join(HERE, "youtube_token.json")):
         say("STEP 6 YouTube upload")
         try:
-            import upload as U; info = U.upload_m2(P); say(f"   {info['url'] + ' (' + info['mode'] + ')' if info else 'not uploaded (QC)'}")
+            import upload as U; info = U.upload_m2(P); say(f"   {info['url'] + ' (' + info['mode'] + ') | title style: ' + str(info.get('style') or '-') + ' | ' + str(info.get('title') or '') if info else 'not uploaded (QC)'}")
             if info and os.getenv("M2_SHORTS", "1") == "1":                  # the teaser Short (vertical, ~50 s, ends at a cliffhanger)
                 try:
                     import shorts as SH

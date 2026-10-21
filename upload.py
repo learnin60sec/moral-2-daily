@@ -136,7 +136,7 @@ def upload(folder, slot=0):
         lists = add_to_playlists(yt, vid, st); print("  playlists:", ", ".join(lists))
     except Exception as e:
         lists = []; print("  (playlists not updated:", str(e)[:120], ")")
-    info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "mode": mode, "publishAt": status.get("publishAt"), "playlists": lists}
+    info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "style": m.get("style", ""), "mode": mode, "publishAt": status.get("publishAt"), "playlists": lists}
     P.save("UPLOADED.json", info); return info
 
 
@@ -196,6 +196,9 @@ def english_metadata(P, st):
     except Exception:
         mystery, real = True, False
     kind = "Hindi Mystery Story" if mystery else "Hindi Moral Story"
+    style = os.getenv("M2_TITLE_STYLE", "auto").lower()                # the title test: English on one day, Hinglish on the next (compare CTR in Studio later)
+    if style not in ("english", "hinglish"): style = "hinglish" if datetime.date.today().toordinal() % 2 else "english"
+    phrase = _en(st.get("search_phrase"))
     start = " ".join(b.get("narration", "") for b in st.get("beats", [])[:4])[:1100]
     prompt = f"""You are the best YouTube growth strategist for an animated {'cinematic ' if real else '2D cartoon '}{kind} channel called "The Moral Story Club" (stories are narrated in Hindi with Hindi subtitles, for the whole family).
 Write the ENGLISH YouTube text for this video so that people see the thumbnail and the title and MUST click.
@@ -204,10 +207,11 @@ Moral (Hindi): {st.get('moral', '')}
 The video opens with this hook (Hindi): {st.get('hook', '')}
 Story start (Hindi): {start}
 RULES
-TITLE: English letters only, at most 68 characters. Open a curiosity gap about the strangest moment or the central question. NEVER reveal the answer or the ending. Put the most intriguing words in the first 40 characters. Strong simple words, optionally ONE emoji (😱 🔍 😮). No lies, no ALL-CAPS sentence (one word may be capitalised). Finish with " | {kind}" only if the whole title still fits in 68 characters.
+{("TITLE: ENGLISH words only, at most 68 characters. Open a curiosity gap about the strangest moment or the central question. NEVER reveal the answer or the ending. Put the most intriguing words in the first 40 characters. Strong simple words, optionally ONE emoji (😱 🔍 😮). No lies, no ALL-CAPS sentence (one word may be capitalised). Finish with ' | " + kind + "' only if the whole title still fits in 68 characters.") if style == "english" else
+ ("TITLE: HINGLISH = Hindi words written in English letters, the way Hindi-speaking families type and say them (for example 'Raat Ko Ghanti Kisne Bajayi?'), at most 68 characters. Open a curiosity gap, NEVER reveal the answer. The most intriguing words in the first 40 characters, optionally ONE emoji, no ALL-CAPS sentence. " + ("Use the words of this real search naturally: " + phrase + ". " if phrase else "") + "Finish with ' | Hindi Kahani' only if it still fits in 68 characters.")}
 DESCRIPTION: English only. Line 1 = the hook question (the first 100 characters decide the click). Then 3-4 lines: the setup WITHOUT the answer, a challenge ("Can you solve it before the end? Write your guess in the comments!"), one line "Narrated in Hindi with Hindi subtitles - a story for the whole family.", a subscribe line ("Subscribe to The Moral Story Club and press the bell - a new story every day at 6 PM IST."), then one line "This story was made with the help of AI.", then 5 English hashtags.
 TAGS: 20 English tags, from broad to specific (hindi stories, hindi mystery story, animated story in hindi, village mystery, bedtime story, ... plus words from this story).
-THUMBNAIL_TEXT: 2-4 English words, ALL CAPS, at most 22 characters, creates curiosity, never the answer (for example WHO RANG THE BELL?).
+THUMBNAIL_TEXT: {"2-4 English words, ALL CAPS, at most 22 characters, creates curiosity, never the answer (for example WHO RANG THE BELL?)." if style == "english" else "2-4 HINGLISH words in English letters, ALL CAPS, at most 22 characters, creates curiosity, never the answer (for example KISNE BAJAYI GHANTI?)."}
 JSON only: {{"title": "...", "description": "...", "tags": ["..."], "thumbnail_text": "..."}}"""
     d = None
     try: d = S.ask_writer(prompt, temperature=0.8, check=lambda x: isinstance(x, dict) and len(_en(x.get("title"))) >= 12 and len(_en(x.get("description"))) >= 80)
@@ -216,7 +220,8 @@ JSON only: {{"title": "...", "description": "...", "tags": ["..."], "thumbnail_t
     fb_title = "A Midnight Mystery Nobody Could Explain 😱" if mystery else "A Village Story That Will Touch Your Heart"
     title = _en(d.get("title")).strip(' "') or fb_title
     if len(title) > 68: title = title[:68].rsplit(" ", 1)[0]
-    if kind.lower() not in title.lower() and len(title) + len(kind) + 3 <= 68: title = f"{title} | {kind}"
+    suffix = kind if style == "english" else "Hindi Kahani"
+    if suffix.lower() not in title.lower() and len(title) + len(suffix) + 3 <= 68: title = f"{title} | {suffix}"
     desc = str(d.get("description") or "")
     desc = "\n".join(l for l in (_en(l) for l in desc.splitlines()) if re.search("[A-Za-z0-9]", l)).strip() or ("Can you solve this mystery before the end? Write your guess in the comments!\nNarrated in Hindi with Hindi subtitles - a story for the whole family.\n"
                                                                      "Subscribe to The Moral Story Club and press the bell - a new story every day at 6 PM IST.")
@@ -232,7 +237,7 @@ JSON only: {{"title": "...", "description": "...", "tags": ["..."], "thumbnail_t
     if "made with the help of AI" not in desc: desc += "\n\nThis story was made with the help of AI."
     desc += "\n\n" + keywords + "\n\n" + "#HindiKahani #MysteryStory #HindiStories #AnimatedStory #BedtimeStory" if mystery else "\n\n" + keywords + "\n\n" + "#HindiKahani #MoralStory #HindiStories #AnimatedStory #BedtimeStory"
     thumb = _en(d.get("thumbnail_text")).upper().strip(' "') or ("CAN YOU SOLVE IT?" if mystery else "WATCH TILL THE END")
-    return {"title": title, "description": desc[:4900], "tags": tags, "thumb": thumb[:28], "kind": kind}
+    return {"title": title, "description": desc[:4900], "tags": tags, "thumb": thumb[:28], "kind": kind, "style": style}
 
 
 def thumbnail_en(P, st, text, kind="Hindi Mystery Story"):
@@ -371,7 +376,7 @@ def upload_m2(P, slot=0):
         lists = add_to_playlists(yt, vid, st); print("  playlists:", ", ".join(lists))
     except Exception as e:
         lists = []; print("  (playlists not updated:", str(e)[:120], ")")
-    info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "mode": mode, "publishAt": status.get("publishAt"), "playlists": lists}
+    info = {"id": vid, "url": f"https://youtu.be/{vid}", "title": m["title"], "style": m.get("style", ""), "mode": mode, "publishAt": status.get("publishAt"), "playlists": lists}
     P.save("UPLOADED.json", info); return info
 
 
@@ -385,7 +390,7 @@ def upload_short(P, st, main_info, short_path):
     """the Short: English title + #Shorts, the link to the full video first in the description, published 30 minutes after the main video"""
     if os.path.exists(P.p("SHORT_UPLOADED.json")): return P.load("SHORT_UPLOADED.json")
     m = P.load("youtube_text.json"); link = main_info["url"]
-    base = re.sub(r"\s*\|\s*Hindi (Mystery|Moral) Story\s*$", "", m["title"]).strip()
+    base = re.sub(r"\s*\|\s*(?:Hindi (?:Mystery|Moral) Story|Hindi Kahani)\s*$", "", m["title"]).strip()
     title = (base + " #Shorts")[:100]
     first = next((l for l in m["description"].splitlines() if l.strip()), "")
     desc = (f"Watch the FULL story here: {link}\n\n{first}\n\nNarrated in Hindi with Hindi subtitles.\nA new story every day at 6 PM IST - subscribe to The Moral Story Club.\n\n"

@@ -272,24 +272,106 @@ def used_stories():
     except Exception: return []
 
 
+SEARCH_SEEDS = ["hindi kahani", "rahasya kahani", "jasoosi kahani", "mystery story in hindi", "bachon ki kahani", "dadi ki kahani", "gaon ki kahani",
+                "cartoon kahani", "chor ki kahani", "moral story in hindi", "hindi kahani cartoon", "kahani hindi mein"]
+_NOT_FAMILY = ("sex", "adult", "nude", "xxx", "18+", "bhabhi", "gandi", "ashleel", "horror", "bhoot", "chudail", "dayan", "khooni", "murder", "romantic", "love story", "hot ", "suhagrat")
+
+
+SEASON_SEEDS = {1: ["makar sankranti ki kahani", "lohri ki kahani", "republic day kahani"], 2: ["mahashivratri ki kahani", "basant panchami ki kahani", "holi ki kahani"],
+                3: ["holi ki kahani", "ram navami ki kahani", "chaitra navratri ki kahani"], 4: ["ram navami ki kahani", "hanuman jayanti ki kahani", "baisakhi ki kahani"],
+                5: ["buddha purnima ki kahani", "garmi ki chhutti ki kahani"], 6: ["baarish ki kahani", "school khulne ki kahani"], 7: ["baarish ki kahani", "guru purnima ki kahani", "sawan ki kahani"],
+                8: ["raksha bandhan ki kahani", "janmashtami ki kahani", "independence day kahani"], 9: ["ganesh chaturthi ki kahani", "teachers day ki kahani", "navratri ki kahani"],
+                10: ["navratri ki kahani", "dussehra ki kahani", "diwali ki kahani", "dhanteras ki kahani"], 11: ["diwali ki kahani", "chhath puja ki kahani", "bhai dooj ki kahani", "children's day kahani"],
+                12: ["christmas ki kahani", "sardi ki kahani", "naye saal ki kahani"]}
+
+
+def season_seeds():
+    """festival and season searches of THIS month and of the NEXT month (the weeks before a festival are when people search for its stories)"""
+    import datetime
+    m = datetime.date.today().month
+    return SEASON_SEEDS.get(m, []) + SEASON_SEEDS.get(m % 12 + 1, [])
+
+
+NICHE_QUERIES = ["hindi kahani cartoon", "rahasya kahani", "bachon ki kahani"]
+
+
+def niche_hits(limit=10):
+    """the Hindi story videos of the last 30 days that are doing best RIGHT NOW (views per day). Needs YOUTUBE_API_KEY; costs about 301 quota units a day
+    (3 searches x 100 + 1 statistics call). No key / any error: an empty list. Used only as a SIGNAL of themes and hooks - never to copy."""
+    import requests, datetime
+    key = os.getenv("YOUTUBE_API_KEY")
+    if not key: return []
+    now = datetime.datetime.now(datetime.timezone.utc); after = (now - datetime.timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ids = []
+    try:
+        for q in NICHE_QUERIES:
+            r = requests.get("https://www.googleapis.com/youtube/v3/search", timeout=30, params={"part": "id", "type": "video", "q": q, "order": "viewCount", "publishedAfter": after,
+                             "regionCode": "IN", "relevanceLanguage": "hi", "safeSearch": "strict", "maxResults": 10, "key": key}).json()
+            ids += [x["id"]["videoId"] for x in r.get("items", []) if x.get("id", {}).get("videoId")]
+        ids = list(dict.fromkeys(ids))[:30]
+        if not ids: return []
+        v = requests.get("https://www.googleapis.com/youtube/v3/videos", timeout=30, params={"part": "snippet,statistics", "id": ",".join(ids), "key": key}).json()
+        out = []
+        for x in v.get("items", []):
+            title = " ".join(str(x["snippet"].get("title", "")).split())
+            if not title or any(b in title.lower() for b in _NOT_FAMILY): continue
+            pub = datetime.datetime.strptime(x["snippet"]["publishedAt"][:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+            days = max(1, (now - pub).days); views = int(x["statistics"].get("viewCount", 0))
+            out.append({"title": title, "views": views, "days": days, "vpd": views / days})
+        out.sort(key=lambda h: h["vpd"], reverse=True)
+        return out[:limit]
+    except Exception:
+        return []
+
+
+def search_suggestions(limit=45):
+    """YouTube search autocomplete (free, no key, no quota): what Hindi-speaking families really type, plus this month's and next month's festival searches. Family-friendly only. If it fails: an empty list."""
+    import requests
+    found = []
+    for seed in dict.fromkeys(SEARCH_SEEDS + season_seeds()):                     # each phrase is asked once
+        try:
+            r = requests.get("https://suggestqueries.google.com/complete/search", params={"client": "firefox", "ds": "yt", "q": seed, "hl": "hi", "gl": "in"}, timeout=8)
+            found += [str(x).strip() for x in r.json()[1] if str(x).strip().lower() != seed]
+        except Exception:
+            continue
+    seen, out = set(), []
+    for q in found:
+        ql = q.lower()
+        if ql in seen or len(q) > 60 or any(b in ql for b in _NOT_FAMILY): continue
+        seen.add(ql); out.append(q)
+    return out[:limit]
+
+
 def stage1(P, auto=False):
     used = used_stories()
     avoid = ("\nDo NOT repeat or closely resemble these stories already made: " + "; ".join(used[-80:])) if used else ""
+    seeds = search_suggestions()
+    seed_set = {x.lower() for x in seeds}
+    print(f"  real YouTube searches found: {len(seeds)}" + (f" (for example: {', '.join(seeds[:4])})" if seeds else " (the ideas are written without them)"))
+    hits = niche_hits()
+    print(f"  recent hits found in the niche: {len(hits)}" + (f" (best: {hits[0]['title'][:50]} - {hits[0]['views']:,} views in {hits[0]['days']} days)" if hits else " (no YOUTUBE_API_KEY, or none found)"))
+    hits_block = ("\nRECENT HITS in this niche (last 30 days, best views per day first): " + "; ".join(f"'{h['title'][:70]}' ({h['views']:,} views in {h['days']} days)" for h in hits[:8]) +
+                  ". Use them ONLY to understand which themes, hooks and curiosity patterns work today. NEVER copy a title, plot, character or joke: every idea must be completely original.") if hits else ""
+    season = ("\nSEASON: today is " + __import__("datetime").date.today().strftime("%d %B %Y") + ". If a major Indian festival or season is coming in the next weeks, a few of the ideas may fit it - respectful, "
+              "inclusive and family-friendly.")
+    demand = ("\nREAL YOUTUBE SEARCHES by Hindi-speaking families (YouTube autocomplete today): " + "; ".join(seeds[:30]) + ". Where an idea can honestly answer one of these searches, "
+              "write that exact phrase in the idea's \"search_phrase\" (otherwise leave it empty). Prefer ideas that match a real search.") if seeds else ""
+    demand = demand + hits_block + (season if seeds else "")
     if "mystery" in os.getenv("M2_STYLE", "").lower():
-        d = ask_writer(avoid + """\nYou are a top Hindi children's mystery writer (like a village Byomkesh or Feluda for kids). Generate exactly 15 ORIGINAL,
+        d = ask_writer(avoid + demand + """\nYou are a top Hindi children's mystery writer (like a village Byomkesh or Feluda for kids). Generate exactly 15 ORIGINAL,
 family-friendly Hindi MYSTERY cartoon story ideas set in an Indian village or small town, for children AND parents. Each idea: a strange happening
 in the first lines (a missing goat, a light moving in the old haveli at night, strange footprints in the field, the school bell ringing by itself,
 grain vanishing from the store...), a clever child or wise elder who investigates, 3 fair clues the viewer can notice, one false suspect,
 a surprising but LOGICAL reveal (no real ghosts or magic - everything has a clever explanation), a warm ending and one short lesson.
 No horror, no gore, no violence, nothing frightening for small children. Write in Hindi (Devanagari).
-JSON only: {"ideas": [{"no": 1, "title": "...", "characters": "...", "concept": "...", "conflict": "...", "twist": "...", "moral": "...", "score": 1-10}]}
+JSON only: {"ideas": [{"no": 1, "title": "...", "search_phrase": "a real search from the list or empty", "characters": "...", "concept": "...", "conflict": "...", "twist": "...", "moral": "...", "score": 1-10}]}
 "score" = how strongly this idea would make a family click and watch till the end on YouTube.""", check=lambda x: len(ideas_from(x)) >= 3)
     else:
-        d = ask_writer(avoid + """\nYou are a professional Hindi moral story writer. Generate exactly 15 ORIGINAL, family-friendly Hindi moral story ideas set in
+        d = ask_writer(avoid + demand + """\nYou are a professional Hindi moral story writer. Generate exactly 15 ORIGINAL, family-friendly Hindi moral story ideas set in
 an Indian village (genre like: two bullocks of Raju, poor farmer and greedy moneylender, two brothers' partition, old farmer's last wish,
 hard-working farmer and lazy son - genre only, do not copy plots). Each idea: interesting opening, relatable village characters, central
 conflict, emotional development, turning point, logical ending, clear moral, enough depth for 15-20 minutes. Write in Hindi (Devanagari).
-JSON only: {"ideas": [{"no": 1, "title": "...", "characters": "...", "concept": "...", "conflict": "...", "twist": "...", "moral": "...", "score": 1-10}]}
+JSON only: {"ideas": [{"no": 1, "title": "...", "search_phrase": "a real search from the list or empty", "characters": "...", "concept": "...", "conflict": "...", "twist": "...", "moral": "...", "score": 1-10}]}
 "score" = how strong the idea is for a viral YouTube moral story.""", check=lambda x: len(ideas_from(x)) >= 3)
     ideas = ideas_from(d)[:15]
     if not ideas: raise SystemExit("STOPPED: no AI could write story ideas today (see the lines above) - try again later")
@@ -303,9 +385,10 @@ JSON only: {"ideas": [{"no": 1, "title": "...", "characters": "...", "concept": 
     if auto:
         import math
         for i in ideas:
-            v = youtube_views(i["title"])
-            i["yt_views"] = v; i["total"] = round(i.get("score", 5) + (math.log10(v + 10) if v else 0), 2)
-            print(f"  {i['no']:>2}. {i['title'][:40]:40s}  AI {i.get('score', 0)}  YouTube views {v:,}  -> {i['total']}")
+            v = youtube_views(i["title"]) if os.getenv("M2_IDEA_VIEWS", "0") == "1" else 0          # off by default: about 100 quota units per idea
+            hit = bool((i.get("search_phrase") or "").strip()) and (i.get("search_phrase") or "").strip().lower() in seed_set      # the idea answers a REAL search
+            i["yt_views"] = v; i["total"] = round(i.get("score", 5) + (math.log10(v + 10) if v else 0) + (1.0 if hit else 0), 2)
+            print(f"  {i['no']:>2}. {i['title'][:40]:40s}  AI {i.get('score', 0)}  YouTube views {v:,}  real search {'YES: ' + i['search_phrase'] if hit else 'no'}  -> {i['total']}")
         pick = max(ideas, key=lambda i: i.get("total", i.get("score", 0)))["no"]
     else:
         pick = int(input("\nStory number chuno (1-15): ").strip() or 1)

@@ -170,7 +170,7 @@ STORY: {json.dumps({"title": d.get("title"), "moral": d.get("moral"), "moral_ton
         hook = (first + "। आख़िर इसका राज़ क्या था?") if first else ""
     try: hook_part = max(0, min(int(d.get("hook_part", 0)), max(0, len(beats) - 3)))
     except Exception: hook_part = 0
-    st = {"title": title, "moral": d.get("moral", ""), "moral_tone": d.get("moral_tone", "happy"), "hook": hook, "hook_part": hook_part,
+    st = {"title": title, "search_phrase": str(idea.get("search_phrase") or "").strip(), "moral": d.get("moral", ""), "moral_tone": d.get("moral_tone", "happy"), "hook": hook, "hook_part": hook_part,
           "characters": looks, "beats": beats, "pictures": []}
     cap = float(os.getenv("M2_MAX_MINUTES", "0") or 0)                # the longest story Kaggle can animate today (0 = no limit)
     for attempt in range(3):
