@@ -3493,3 +3493,188 @@ Upload successful: job.json (29KB)
 [06:50:24 +349.6 min]    Short made: 17055 KB
 [06:50:27 +349.6 min]    Short uploaded: https://youtube.com/shorts/IVY4SMOlPmA (public at 2026-10-29T13:00:00Z)
 [06:50:27 +349.7 min] === DONE in 350 min ===
+[01:04:15 +  0.0 min] === CLOUD DAILY: 4.5-min video, AI clips: ALL pictures ===
+[01:04:15 +  0.0 min]     style: 2d_mystery | picture model: schnell | film look: none | upload: yes | Gemini keys: 2
+[01:04:15 +  0.0 min]    Kaggle can animate 50 pages today -> up to 3.9 min with a moving clip on EVERY page
+[01:04:15 +  0.0 min]    video shortened from 4.5 to 3.9 min so no page is left without a clip
+[01:04:15 +  0.0 min] STEP 1 story + voice
+[01:26:45 + 22.5 min]    real YouTube search matched by the story: hindi kahaniya funny comedy stories
+[01:26:45 + 22.5 min]    अखाड़े की सुगंधित मिट्टी का राज: 40 pictures needed
+[01:26:45 + 22.5 min] STEP 2 pictures: drawn on Kaggle with ComfyUI (FLUX schnell) in the same job as the clips
+[01:26:45 + 22.5 min] STEP 3+4 key moments -> Kaggle clips
+[01:26:45 + 22.5 min]    prompt 001.png (written by story script (picture drawn on Kaggle)): Wide shot, early misty morning, golden sunrise light casting warm hues over a traditional Indian village akhad...
+[01:26:45 + 22.5 min]    prompt 002.png (written by story script (picture drawn on Kaggle)): Medium shot, early misty morning, golden soft sunrise light illuminating the akhada in 2D cartoon style. Pehlw...
+[01:26:45 + 22.5 min]    prompt 003.png (written by story script (picture drawn on Kaggle)): Medium shot, early misty morning, golden sunrise light diffused through dense fog in 2D cartoon style. Pehlwan...
+[01:26:45 + 22.5 min]    prompt 004.png (written by story script (picture drawn on Kaggle)): Medium-wide shot, early morning dawn, warm golden light filtering through neem branches from the upper left, v...
+[01:26:45 + 22.5 min]    prompt 005.png (written by story script (picture drawn on Kaggle)): Medium shot, morning dawn, warm amber and golden sunlight streaming from the left through neem foliage, colorf...
+[01:26:45 + 22.5 min]    prompt 006.png (written by story script (picture drawn on Kaggle)): Medium shot, early morning dawn, diagonal golden sunlight filtering through neem branches, rich 2D cartoon sty...
+[01:26:45 + 22.5 min]    prompt 007.png (written by story script (picture drawn on Kaggle)): Medium shot, dramatic early morning light with long diagonal golden shadows, rich 2D cartoon animation style. ...
+[01:26:45 + 22.5 min]    prompt 008.png (written by story script (picture drawn on Kaggle)): Medium shot, bright early morning with strong amber sunlight casting elongated dark shadows across the ground,...
+[01:26:45 + 22.5 min]    prompt 009.png (written by story script (picture drawn on Kaggle)): Medium shot, crisp morning atmosphere with rich golden sunbeams casting dramatic deep shadows, expressive 2D c...
+[01:26:45 + 22.5 min]    prompt 010.png (written by story script (picture drawn on Kaggle)): Ground-level close-up shot, bright morning light filtering through overhead trees in golden dappled beams, ric...
+[01:26:45 + 22.5 min]    prompt 011.png (written by story script (picture drawn on Kaggle)): Ground-level close-up shot, warm morning, golden sunlight casting shifting leaf shadows onto the earthen pit, ...
+[01:26:45 + 22.5 min]    prompt 012.png (written by story script (picture drawn on Kaggle)): Ground-level close-up shot, mid-morning ambiance, dappled golden sunbeams warming the rust-red soil, crisp 2D ...
+[01:26:45 + 22.5 min]    prompt 013.png (written by story script (picture drawn on Kaggle)): Medium shot, early morning, low golden horizontal sunlight streaming across the red-brown mud pit, casting lon...
+[01:26:45 + 22.5 min]    prompt 014.png (written by story script (picture drawn on Kaggle)): Medium-close shot, early morning, low warm angled sunlight illuminating rich soil and glistening insect silhou...
+[01:26:45 + 22.5 min]    prompt 015.png (written by story script (picture drawn on Kaggle)): Medium shot, crisp morning hour, radiant low-angle amber illumination highlighting glistening mud granules and...
+[01:26:45 + 22.5 min]    prompt 016.png (written by story script (picture drawn on Kaggle)): Medium close-up shot under bright morning sunlight streaming warmly from the upper left, rendered in rich 2D c...
+[01:26:45 + 22.5 min]    prompt 017.png (written by story script (picture drawn on Kaggle)): Close-up shot under vibrant morning sunlight casting long golden angles across the wrestling pit, rendered in ...
+[01:26:45 + 22.5 min]    prompt 018.png (written by story script (picture drawn on Kaggle)): Medium shot under direct morning sunlight pouring warm golden tones over the clay pit, styled in charming 2D c...
+[01:26:45 + 22.5 min]    prompt 019.png (written by story script (picture drawn on Kaggle)): Medium shot, bright clear morning daylight, golden side illumination casting crisp shadows, vibrant 2D cartoon...
+[01:26:45 + 22.5 min]    prompt 020.png (written by story script (picture drawn on Kaggle)): Medium shot, bright clear morning daylight, direct warm sunbeams highlighting expressions, vibrant 2D cartoon ...
+[01:26:45 + 22.5 min]    prompt 021.png (written by story script (picture drawn on Kaggle)): Medium shot, bright clear morning daylight, angled sunlight casting long shadows, vibrant 2D cartoon style wit...
+[01:26:45 + 22.5 min]    prompt 022.png (written by story script (picture drawn on Kaggle)): Wide shot in a vibrant 2D cartoon style during early morning, where soft golden sunlight cuts diagonally acros...
+[01:26:45 + 22.5 min]    prompt 023.png (written by story script (picture drawn on Kaggle)): Medium shot in vibrant 2D cartoon style during crisp morning hours, with angled amber sunbeams cutting through...
+[01:26:45 + 22.5 min]    prompt 024.png (written by story script (picture drawn on Kaggle)): Medium shot in colourful 2D cartoon style during bright morning, strong side lighting casting sharp silhouette...
+[01:26:45 + 22.5 min]    prompt 025.png (written by story script (picture drawn on Kaggle)): Medium shot, bright morning with sharp diagonal golden sunlight cutting across the alley floor, vivid 2D carto...
+[01:26:45 + 22.5 min]    prompt 026.png (written by story script (picture drawn on Kaggle)): Medium shot, sharp morning sunlight casting long hard shadows across the lane, colorful 2D cartoon style. Pehl...
+[01:26:45 + 22.5 min]    prompt 027.png (written by story script (picture drawn on Kaggle)): Medium shot, brilliant morning daylight beaming diagonally against the alley stones, expressive 2D cartoon sty...
+[01:26:45 + 22.5 min]    prompt 028.png (written by story script (picture drawn on Kaggle)): Medium shot, bright warm morning light casting golden rays from the upper left, vibrant 2D cartoon style. On t...
+[01:26:45 + 22.5 min]    prompt 029.png (written by story script (picture drawn on Kaggle)): Medium shot, bright warm morning light illuminating the scene with amber tones from above, vibrant 2D cartoon ...
+[01:26:45 + 22.5 min]    prompt 030.png (written by story script (picture drawn on Kaggle)): Medium shot, bright warm morning light bathing the courtyard with golden highlights from the left, vibrant 2D ...
+[01:26:45 + 22.5 min]    prompt 031.png (written by story script (picture drawn on Kaggle)): Medium shot, late afternoon, warm golden sunlight streaming from the left with amber reflections, vibrant 2D c...
+[01:26:45 + 22.5 min]    prompt 032.png (written by story script (picture drawn on Kaggle)): Medium shot, late afternoon, golden sunlight glowing from the side casting long soft shadows, colourful 2D car...
+[01:26:45 + 22.5 min]    prompt 033.png (written by story script (picture drawn on Kaggle)): Medium shot, late afternoon, soft golden light bathing the courtyard with rich amber warmth, clean 2D cartoon ...
+[01:26:45 + 22.5 min]    prompt 034.png (written by story script (picture drawn on Kaggle)): Wide shot, bright morning, warm golden sunlight streaming from the upper right, vibrant 2D cartoon style. Pehl...
+[01:26:45 + 22.5 min]    prompt 035.png (written by story script (picture drawn on Kaggle)): Medium shot, warm morning daylight, glowing amber sunbeams illuminating the center, rich 2D cartoon style. Peh...
+[01:26:45 + 22.5 min]    prompt 036.png (written by story script (picture drawn on Kaggle)): Medium shot, golden morning sunshine filtering through tree canopy, bright cheerful atmosphere, expressive 2D ...
+[01:26:45 + 22.5 min]    prompt 037.png (written by story script (picture drawn on Kaggle)): Medium shot, warm morning hours, crisp diagonal sun rays casting long soft shadows, colourful 2D cartoon style...
+[01:26:45 + 22.5 min]    prompt 038.png (written by story script (picture drawn on Kaggle)): Medium shot, radiant morning glow, direct golden sunlight illuminating the figures, crisp 2D cartoon aesthetic...
+[01:26:45 + 22.5 min]    prompt 039.png (written by story script (picture drawn on Kaggle)): Medium close-up shot, vivid morning sunlight spreading warmth, rich 2D cartoon style with bold outlines. Pehlw...
+[01:26:45 + 22.5 min]    prompt 040.png (written by story script (picture drawn on Kaggle)): Wide shot, late morning sunlight bathing the arena in cheerful golden hues, lively 2D cartoon animation style....
+[01:26:45 + 22.5 min]    40 pictures will be drawn on Kaggle with ComfyUI (FLUX schnell)
+[01:26:45 + 22.5 min]    account 1: 18.8 h used this Kaggle week -> room for 10 clips today
+[01:26:45 + 22.5 min]    account 2: 16.6 h used this Kaggle week -> room for 10 clips today
+[01:26:45 + 22.5 min]    account 3: 16.6 h used this Kaggle week -> room for 10 clips today
+[01:26:45 + 22.5 min]    account 4: 19.1 h used this Kaggle week -> room for 10 clips today
+[01:26:45 + 22.5 min]    account 5: 15.1 h used this Kaggle week -> room for 10 clips today
+[01:26:45 + 22.5 min]    14 chains (one place = one continuous shot, max 3 clips): [001,002,003] [004,005,006] [007,008,009] [010,011,012] [013,014,015] [016,017,018] [019,020,021] [022,023,024] [025,026,027] [028,029,030] [031,032,033] [034,035,036] [037,038,039] [040]
+[01:27:18 + 23.0 min]    Kaggle job started on account 1 (acct-1): 6 clips, pictures by schnell, about 136 min
+[01:27:48 + 23.6 min]    Kaggle job started on account 2 (acct-2): 9 clips, pictures by schnell, about 194 min
+[01:28:24 + 24.2 min]    Kaggle job started on account 3 (acct-3): 9 clips, pictures by schnell, about 194 min
+[01:28:58 + 24.7 min]    Kaggle job started on account 4 (acct-4): 6 clips, pictures by schnell, about 136 min
+[01:29:28 + 25.2 min]    Kaggle job started on account 5 (acct-5): 10 clips, pictures by schnell, about 214 min
+[01:34:42 + 30.4 min]    Kaggle working ... 0 of 5 accounts finished
+[01:49:18 + 45.1 min]    Kaggle working ... 0 of 5 accounts finished
+[02:04:57 + 60.7 min]    Kaggle working ... 0 of 5 accounts finished
+[02:19:33 + 75.3 min]    Kaggle working ... 0 of 5 accounts finished
+[02:35:11 + 90.9 min]    Kaggle working ... 0 of 5 accounts finished
+[02:49:47 +105.5 min]    Kaggle working ... 0 of 5 accounts finished
+[03:04:25 +120.2 min]    Kaggle working ... 0 of 5 accounts finished
+[03:19:59 +135.7 min]    Kaggle working ... 1 of 5 accounts finished
+[03:34:29 +150.2 min]    Kaggle working ... 1 of 5 accounts finished
+[03:50:00 +165.7 min]    Kaggle working ... 1 of 5 accounts finished
+[04:04:27 +180.2 min]    Kaggle working ... 2 of 5 accounts finished
+[04:19:50 +195.6 min]    Kaggle working ... 2 of 5 accounts finished
+[04:35:14 +211.0 min]    Kaggle working ... 2 of 5 accounts finished
+[04:49:36 +225.4 min]    Kaggle working ... 2 of 5 accounts finished
+[05:05:00 +240.8 min]    Kaggle working ... 2 of 5 accounts finished
+[05:19:23 +255.1 min]    Kaggle working ... 3 of 5 accounts finished
+[05:34:39 +270.4 min]    Kaggle working ... 3 of 5 accounts finished
+[05:49:55 +285.7 min]    Kaggle working ... 3 of 5 accounts finished
+[06:05:06 +300.8 min]    Kaggle working ... 4 of 5 accounts finished
+[06:08:07 +303.9 min]    account 1: Kaggle job status = 61030-012645-kaggle has status "kernelworkerstatus.complete"
+[06:08:12 +303.9 min]    account 1 report: pictures 6/6, clips 6/6, 103.7 min on Kaggle, smooth 32 fps: yes, sharper clips: 6
+[06:08:12 +303.9 min]    account 1: clips made again (page: tries) {'034.png': 2} | still doubtful after the tries -
+[06:08:13 +304.0 min]    picture 028.png drawn on Kaggle
+[06:08:13 +304.0 min]    picture 036.png drawn on Kaggle
+[06:08:13 +304.0 min]    picture 029.png drawn on Kaggle
+[06:08:14 +304.0 min]    picture 034.png drawn on Kaggle
+[06:08:14 +304.0 min]    picture 030.png drawn on Kaggle
+[06:08:15 +304.0 min]    picture 035.png drawn on Kaggle
+[06:08:15 +304.0 min]    account 2: Kaggle job status = 1030-012718-kaggle2 has status "kernelworkerstatus.complete"
+[06:08:22 +304.1 min]    account 2 report: pictures 9/9, clips 9/9, 229.2 min on Kaggle, smooth 32 fps: yes, sharper clips: 9
+[06:08:22 +304.1 min]    account 2: clips made again (page: tries) {'010.png': 3, '011.png': 3, '012.png': 2, '021.png': 3} | still doubtful after the tries {'010.png': 'melt', '011.png': 'melt', '021.png': 'melt'}
+[06:08:22 +304.1 min]    picture 012.png drawn on Kaggle
+[06:08:23 +304.1 min]    picture 020.png drawn on Kaggle
+[06:08:23 +304.1 min]    picture 010.png drawn on Kaggle
+[06:08:24 +304.1 min]    picture 025.png drawn on Kaggle
+[06:08:24 +304.1 min]    picture 011.png drawn on Kaggle
+[06:08:24 +304.1 min]    picture 027.png drawn on Kaggle
+[06:08:25 +304.2 min]    picture 026.png drawn on Kaggle
+[06:08:25 +304.2 min]    picture 019.png drawn on Kaggle
+[06:08:25 +304.2 min]    picture 021.png drawn on Kaggle
+[06:08:25 +304.2 min]    account 3: Kaggle job status = 1030-012748-kaggle3 has status "kernelworkerstatus.complete"
+[06:08:31 +304.3 min]    account 3 report: pictures 9/9, clips 9/9, 264.4 min on Kaggle, smooth 32 fps: yes, sharper clips: 9
+[06:08:31 +304.3 min]    account 3: clips made again (page: tries) {'016.png': 3, '017.png': 3, '018.png': 3, '022.png': 3, '023.png': 3, '024.png': 3} | still doubtful after the tries {'016.png': 'melt', '017.png': 'melt', '018.png': 'melt', '022.png': 'melt', '023.png': 'melt'}
+[06:08:32 +304.3 min]    picture 017.png drawn on Kaggle
+[06:08:32 +304.3 min]    picture 024.png drawn on Kaggle
+[06:08:32 +304.3 min]    picture 023.png drawn on Kaggle
+[06:08:33 +304.3 min]    picture 007.png drawn on Kaggle
+[06:08:33 +304.3 min]    picture 009.png drawn on Kaggle
+[06:08:34 +304.3 min]    picture 022.png drawn on Kaggle
+[06:08:34 +304.3 min]    picture 008.png drawn on Kaggle
+[06:08:34 +304.3 min]    picture 016.png drawn on Kaggle
+[06:08:35 +304.3 min]    picture 018.png drawn on Kaggle
+[06:08:35 +304.3 min]    account 4: Kaggle job status = 1030-012824-kaggle4 has status "kernelworkerstatus.complete"
+[06:08:40 +304.4 min]    account 4 report: pictures 6/6, clips 6/6, 150.9 min on Kaggle, smooth 32 fps: yes, sharper clips: 6
+[06:08:40 +304.4 min]    account 4: clips made again (page: tries) {'033.png': 2, '038.png': 3, '039.png': 3} | still doubtful after the tries {'038.png': 'melt', '039.png': 'melt'}
+[06:08:40 +304.4 min]    picture 037.png drawn on Kaggle
+[06:08:40 +304.4 min]    picture 039.png drawn on Kaggle
+[06:08:41 +304.4 min]    picture 032.png drawn on Kaggle
+[06:08:41 +304.4 min]    picture 031.png drawn on Kaggle
+[06:08:42 +304.4 min]    picture 033.png drawn on Kaggle
+[06:08:42 +304.4 min]    picture 038.png drawn on Kaggle
+[06:08:42 +304.4 min]    account 5: Kaggle job status = 1030-012858-kaggle5 has status "kernelworkerstatus.complete"
+[06:08:48 +304.5 min]    account 5 report: pictures 10/10, clips 10/10, 277.3 min on Kaggle, smooth 32 fps: yes, sharper clips: 10
+[06:08:48 +304.5 min]    account 5: clips made again (page: tries) {'004.png': 3, '040.png': 3} | still doubtful after the tries {'004.png': 'melt', '040.png': 'melt'}
+[06:08:48 +304.5 min]    picture 006.png drawn on Kaggle
+[06:08:49 +304.6 min]    picture 004.png drawn on Kaggle
+[06:08:49 +304.6 min]    picture 005.png drawn on Kaggle
+[06:08:49 +304.6 min]    picture 002.png drawn on Kaggle
+[06:08:50 +304.6 min]    picture 040.png drawn on Kaggle
+[06:08:50 +304.6 min]    picture 001.png drawn on Kaggle
+[06:08:51 +304.6 min]    picture 015.png drawn on Kaggle
+[06:08:51 +304.6 min]    picture 003.png drawn on Kaggle
+[06:08:51 +304.6 min]    picture 014.png drawn on Kaggle
+[06:08:52 +304.6 min]    picture 013.png drawn on Kaggle
+[06:08:52 +304.6 min]    40 AI clips received (of 40)
+[06:08:52 +304.6 min] STEP 4b clip doctor
+[06:08:52 +304.6 min]    CLIP DOCTOR: 001.mp4 KEPT - strong movement   [usual step 2.2, biggest step 4.8 at 0.2 s (x2.1), similarity 0.09]
+[06:08:52 +304.6 min]    CLIP DOCTOR: 002.mp4 KEPT - strong movement   [usual step 2.2, biggest step 4.1 at 2.4 s (x1.8), similarity 0.09]
+[06:08:53 +304.6 min]    CLIP DOCTOR: 003.mp4 OK   [usual step 2.3, biggest step 3.5 at 2.9 s (x1.5), similarity 0.24]
+[06:08:53 +304.6 min]    CLIP DOCTOR: 004.mp4 KEPT - strong movement   [usual step 3.8, biggest step 5.7 at 2.4 s (x1.5), similarity -0.08]
+[06:08:53 +304.6 min]    CLIP DOCTOR: 005.mp4 OK   [usual step 2.9, biggest step 4.4 at 0.2 s (x1.5), similarity 0.32]
+[06:08:54 +304.6 min]    CLIP DOCTOR: 006.mp4 KEPT - strong movement   [usual step 1.0, biggest step 3.5 at 0.8 s (x3.5), similarity 0.14]
+[06:08:54 +304.6 min]    CLIP DOCTOR: 007.mp4 KEPT - strong movement   [usual step 3.9, biggest step 7.7 at 1.9 s (x2.0), similarity 0.05]
+[06:08:55 +304.7 min]    CLIP DOCTOR: 008.mp4 KEPT - strong movement   [usual step 2.4, biggest step 5.8 at 4.6 s (x2.4), similarity 0.04]
+[06:08:55 +304.7 min]    CLIP DOCTOR: 009.mp4 OK   [usual step 3.4, biggest step 4.9 at 2.8 s (x1.4), similarity 0.19]
+[06:08:55 +304.7 min]    CLIP DOCTOR: 010.mp4 KEPT - strong movement   [usual step 3.5, biggest step 7.0 at 0.4 s (x2.0), similarity -0.05]
+[06:08:56 +304.7 min]    CLIP DOCTOR: 011.mp4 KEPT - strong movement   [usual step 2.8, biggest step 7.0 at 0.6 s (x2.5), similarity -0.08]
+[06:08:56 +304.7 min]    CLIP DOCTOR: 012.mp4 KEPT - strong movement   [usual step 3.8, biggest step 7.7 at 0.8 s (x2.0), similarity 0.06]
+[06:08:56 +304.7 min]    CLIP DOCTOR: 013.mp4 KEPT - strong movement   [usual step 3.4, biggest step 7.2 at 0.6 s (x2.1), similarity -0.04]
+[06:08:57 +304.7 min]    CLIP DOCTOR: 014.mp4 KEPT - strong movement   [usual step 3.0, biggest step 7.2 at 0.1 s (x2.4), similarity 0.14]
+[06:08:57 +304.7 min]    CLIP DOCTOR: 015.mp4 KEPT - strong movement   [usual step 2.4, biggest step 3.8 at 0.5 s (x1.5), similarity 0.03]
+[06:08:57 +304.7 min]    CLIP DOCTOR: 016.mp4 KEPT - strong movement   [usual step 4.1, biggest step 6.5 at 1.6 s (x1.6), similarity -0.09]
+[06:08:58 +304.7 min]    CLIP DOCTOR: 017.mp4 KEPT - strong movement   [usual step 5.6, biggest step 7.5 at 4.2 s (x1.4), similarity -0.10]
+[06:08:58 +304.7 min]    CLIP DOCTOR: 018.mp4 KEPT - strong movement   [usual step 3.9, biggest step 11.3 at 0.6 s (x2.9), similarity -0.10]
+[06:08:59 +304.7 min]    CLIP DOCTOR: 019.mp4 KEPT - strong movement   [usual step 4.8, biggest step 13.9 at 1.6 s (x2.9), similarity -0.07]
+[06:08:59 +304.7 min]    CLIP DOCTOR: 020.mp4 OK   [usual step 3.1, biggest step 7.8 at 0.2 s (x2.5), similarity 0.23]
+[06:09:00 +304.7 min]    CLIP DOCTOR: 021.mp4 KEPT - strong movement   [usual step 17.5, biggest step 24.0 at 1.2 s (x1.4), similarity -0.48]
+[06:09:00 +304.7 min]    CLIP DOCTOR: 022.mp4 KEPT - strong movement   [usual step 7.6, biggest step 20.4 at 0.9 s (x2.7), similarity -0.19]
+[06:09:00 +304.7 min]    CLIP DOCTOR: 023.mp4 KEPT - strong movement   [usual step 4.4, biggest step 12.0 at 0.2 s (x2.7), similarity -0.11]
+[06:09:01 +304.8 min]    CLIP DOCTOR: 024.mp4 KEPT - strong movement   [usual step 4.1, biggest step 7.8 at 4.9 s (x1.9), similarity -0.02]
+[06:09:01 +304.8 min]    CLIP DOCTOR: 025.mp4 KEPT - strong movement   [usual step 1.7, biggest step 4.8 at 0.5 s (x2.8), similarity 0.05]
+[06:09:01 +304.8 min]    CLIP DOCTOR: 026.mp4 KEPT - strong movement   [usual step 1.0, biggest step 4.0 at 0.1 s (x4.0), similarity 0.59]
+[06:09:02 +304.8 min]    CLIP DOCTOR: 027.mp4 KEPT - strong movement   [usual step 1.7, biggest step 5.6 at 0.5 s (x3.3), similarity 0.08]
+[06:09:02 +304.8 min]    CLIP DOCTOR: 028.mp4 KEPT - strong movement   [usual step 3.2, biggest step 6.1 at 4.0 s (x1.9), similarity 0.02]
+[06:09:03 +304.8 min]    CLIP DOCTOR: 029.mp4 KEPT - strong movement   [usual step 3.3, biggest step 8.3 at 0.2 s (x2.5), similarity 0.07]
+[06:09:03 +304.8 min]    CLIP DOCTOR: 030.mp4 OK   [usual step 2.2, biggest step 4.3 at 0.2 s (x2.0), similarity 0.34]
+[06:09:03 +304.8 min]    CLIP DOCTOR: 031.mp4 KEPT - strong movement   [usual step 3.3, biggest step 6.5 at 1.5 s (x2.0), similarity 0.05]
+[06:09:04 +304.8 min]    CLIP DOCTOR: 032.mp4 KEPT - strong movement   [usual step 2.5, biggest step 6.1 at 4.0 s (x2.5), similarity 0.05]
+[06:09:04 +304.8 min]    CLIP DOCTOR: 033.mp4 KEPT - strong movement   [usual step 2.8, biggest step 6.5 at 0.5 s (x2.3), similarity 0.05]
+[06:09:04 +304.8 min]    CLIP DOCTOR: 034.mp4 KEPT - strong movement   [usual step 3.9, biggest step 10.2 at 0.1 s (x2.6), similarity -0.02]
+[06:09:05 +304.8 min]    CLIP DOCTOR: 035.mp4 OK   [usual step 3.7, biggest step 6.6 at 3.8 s (x1.8), similarity 0.26]
+[06:09:05 +304.8 min]    CLIP DOCTOR: 036.mp4 KEPT - strong movement   [usual step 3.8, biggest step 8.6 at 0.5 s (x2.2), similarity 0.07]
+[06:09:06 +304.8 min]    CLIP DOCTOR: 037.mp4 OK   [usual step 3.4, biggest step 7.8 at 0.2 s (x2.3), similarity 0.17]
+[06:09:06 +304.8 min]    CLIP DOCTOR: 038.mp4 KEPT - strong movement   [usual step 3.9, biggest step 8.2 at 0.2 s (x2.1), similarity -0.09]
+[06:09:07 +304.9 min]    CLIP DOCTOR: 039.mp4 KEPT - strong movement   [usual step 4.7, biggest step 10.1 at 3.6 s (x2.1), similarity -0.16]
+[06:09:07 +304.9 min]    CLIP DOCTOR: 040.mp4 KEPT - strong movement   [usual step 11.0, biggest step 15.5 at 4.2 s (x1.4), similarity -0.17]
+[06:09:07 +304.9 min]    CLIP DOCTOR: 40 clips, all kept as videos (0 trimmed at a scene cut)
+[06:09:07 +304.9 min] STEP 5 video
+[06:36:09 +331.9 min]    QC: CORRECTED & COMPLETE
+[06:36:09 +331.9 min] STEP 6 YouTube upload
+[06:37:31 +333.3 min]    https://youtu.be/ouQVMkmhj8w (schedule) | title style: hinglish | Akhada Me Ye Khushbu Kaisi? Funny Comedy Hindi Kahaniya
+[06:38:05 +333.8 min]    Short made: 16038 KB
+[06:38:08 +333.9 min]    Short uploaded: https://youtube.com/shorts/BsLNu_kDgiM (public at 2026-10-30T13:00:00Z)
+[06:38:08 +333.9 min] === DONE in 334 min ===
