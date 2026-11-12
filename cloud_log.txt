@@ -4918,3 +4918,8 @@ Upload successful: job.json (29KB)
 [01:54:37 + 38.6 min]    Short made: 6067 KB
 [01:54:39 + 38.6 min]    Short uploaded: https://youtube.com/shorts/iqoLD64WRFk (public at 2026-11-11T13:00:00Z)
 [01:54:39 + 38.6 min] === DONE in 39 min ===
+[02:17:42 +  0.0 min] === CLOUD DAILY: 4.5-min video, AI clips: ALL pictures ===
+[02:17:42 +  0.0 min]     style: 2d_mystery | picture model: schnell | film look: none | upload: yes | Gemini keys: 2
+[02:17:42 +  0.0 min]    Kaggle can animate 50 pages today -> up to 3.9 min with a moving clip on EVERY page
+[02:17:42 +  0.0 min]    video shortened from 4.5 to 3.9 min so no page is left without a clip
+[02:17:42 +  0.0 min] STEP 1 story + voice
